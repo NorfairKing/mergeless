@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -11,12 +12,18 @@ module Data.Mergeless
     , makeSyncRequest
     , SyncResponse(..)
     , mergeSyncResponse
+    , CentralStore(..)
+    , processSync
+    , processSyncWith
     ) where
 
 import Control.Applicative
+import Control.Monad.IO.Class
 import Data.Aeson
 import Data.Function
 import Data.List
+import qualified Data.Map as M
+import Data.Map (Map)
 import Data.Maybe
 import qualified Data.Set as S
 import Data.Set (Set)
@@ -37,15 +44,11 @@ instance (Validity a, Ord a) => Validity (Store a) where
             [ annotate storeItems "storeItems"
             , declare "the store items have distinct uuids" $
               distinct $
-              flip mapMaybe (S.toList storeItems) $ \si ->
-                  case si of
-                      UnsyncedItem _ -> Nothing
-                      SyncedItem Synced {..} -> Just syncedUuid
-                      UndeletedItem u -> Just u
+              flip mapMaybe (S.toList storeItems) $ \case
+                  UnsyncedItem _ -> Nothing
+                  SyncedItem Synced {..} -> Just syncedUuid
+                  UndeletedItem u -> Just u
             ]
-
-distinct :: Ord a => [a] -> Bool
-distinct ls = sort ls == S.toAscList (S.fromList ls)
 
 instance (FromJSON a, Ord a) => FromJSON (Store a) where
     parseJSON v = Store <$> parseJSON v
@@ -181,20 +184,17 @@ makeSyncRequest :: Ord a => Store a -> SyncRequest a
 makeSyncRequest Store {..} =
     SyncRequest
     { syncRequestAddedItems =
-          flip mapSetMaybe storeItems $ \si ->
-              case si of
-                  UnsyncedItem a -> Just a
-                  _ -> Nothing
+          flip mapSetMaybe storeItems $ \case
+              UnsyncedItem a -> Just a
+              _ -> Nothing
     , syncRequestSyncedItems =
-          flip mapSetMaybe storeItems $ \si ->
-              case si of
-                  SyncedItem i -> Just $ syncedUuid i
-                  _ -> Nothing
+          flip mapSetMaybe storeItems $ \case
+              SyncedItem i -> Just $ syncedUuid i
+              _ -> Nothing
     , syncRequestUndeletedItems =
-          flip mapSetMaybe storeItems $ \si ->
-              case si of
-                  UndeletedItem uuid -> Just uuid
-                  _ -> Nothing
+          flip mapSetMaybe storeItems $ \case
+              UndeletedItem uuid -> Just uuid
+              _ -> Nothing
     }
 
 mergeSyncResponse :: Ord a => Store a -> SyncResponse a -> Store a
@@ -205,10 +205,8 @@ mergeSyncResponse s SyncResponse {..} =
                     UnsyncedItem Added {..} ->
                         case find
                                  (\Synced {..} ->
-                                      and
-                                          [ syncedCreated == addedAdded
-                                          , syncedValue == addedValue
-                                          ])
+                                      syncedCreated == addedAdded &&
+                                      syncedValue == addedValue)
                                  syncResponseAddedItems of
                             Nothing -> Just si -- If it wasn't added (for whatever reason), just leave it as unsynced
                             Just ii -> Just $ SyncedItem ii -- If it was added, then it becomes synced
@@ -231,7 +229,7 @@ mergeSyncResponse s SyncResponse {..} =
                               syncedUuid s1 == syncedUuid s2
                           (SyncedItem s1, UndeletedItem u2) ->
                               syncedUuid s1 == u2
-                          (UndeletedItem u1, SyncedItem  s2) ->
+                          (UndeletedItem u1, SyncedItem s2) ->
                               u1 == syncedUuid s2
                           (UndeletedItem u1, UndeletedItem u2) -> u1 == u2) .
              S.toList $
@@ -239,5 +237,32 @@ mergeSyncResponse s SyncResponse {..} =
              withNewOwnItems
        }
 
+newtype CentralStore a = CentralStore
+    { centralStoreItems :: Map (UUID a) a
+    } deriving (Show, Eq, Generic)
+
+instance (Validity a, Ord a) => Validity (CentralStore a)
+
+processSync ::
+       (Ord a, MonadIO m)
+    => CentralStore a
+    -> SyncRequest a
+    -> m (CentralStore a, SyncResponse a)
+processSync = processSyncWith nextRandomUUID
+
+-- | A process a sync request with a custom UUID generation function
+--
+-- Use this function if you want to process sync requests purely with a pseudorandom generator
+processSyncWith ::
+       Ord a
+    => m (UUID a)
+    -> CentralStore a
+    -> SyncRequest a
+    -> m (CentralStore a, SyncResponse a)
+processSyncWith genUuid CentralStore {..} SyncRequest {..} = undefined
+
 mapSetMaybe :: Ord b => (a -> Maybe b) -> Set a -> Set b
 mapSetMaybe func = S.map fromJust . S.filter isJust . S.map func
+
+distinct :: Ord a => [a] -> Bool
+distinct ls = sort ls == S.toAscList (S.fromList ls)

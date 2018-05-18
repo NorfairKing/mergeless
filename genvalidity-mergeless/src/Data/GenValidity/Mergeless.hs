@@ -14,7 +14,7 @@ import Data.Mergeless
 instance (GenUnchecked a, Ord a) => GenUnchecked (Store a)
 
 instance (GenValid a, Ord a) => GenValid (Store a) where
-    genValid =( Store <$> genValid) `suchThat` isValid
+    genValid = (Store <$> genValid) `suchThat` isValid
 
 instance (GenInvalid a, Ord a) => GenInvalid (Store a)
 
@@ -44,8 +44,7 @@ instance (GenUnchecked a, Ord a) => GenUnchecked (SyncRequest a)
 
 instance (GenValid a, Ord a) => GenValid (SyncRequest a) where
     genValid =
-        (SyncRequest <$> genValid <*> genValid <*> genValid) `suchThat`
-        isValid
+        (SyncRequest <$> genValid <*> genValid <*> genValid) `suchThat` isValid
 
 instance (GenInvalid a, Ord a) => GenInvalid (SyncRequest a)
 
@@ -56,3 +55,10 @@ instance (GenValid a, Ord a) => GenValid (SyncResponse a) where
         (SyncResponse <$> genValid <*> genValid <*> genValid) `suchThat` isValid
 
 instance (GenInvalid a, Ord a) => GenInvalid (SyncResponse a)
+
+instance (GenUnchecked a, Ord a) => GenUnchecked (CentralStore a)
+
+instance (GenValid a, Ord a) => GenValid (CentralStore a) where
+    genValid = (CentralStore <$> genValid) `suchThat` isValid
+
+instance (GenInvalid a, Ord a) => GenInvalid (CentralStore a)

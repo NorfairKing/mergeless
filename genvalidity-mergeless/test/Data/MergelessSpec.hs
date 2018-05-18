@@ -43,3 +43,15 @@ spec = do
     describe "mergeSyncResponse" $
         it "produces valid sync stores" $
         producesValidsOnValids2 (mergeSyncResponse @Double)
+    describe "processSync" $
+        it "makes syncing idempotent" $
+        forAllValid $ \central1 ->
+            forAllValid $ \local1 -> do
+                let sreq1 = makeSyncRequest @Double local1
+                (central2, sresp1) <- processSync central1 sreq1
+                let local2 = mergeSyncResponse local1 sresp1
+                let sreq2 = makeSyncRequest local2
+                (central3, sresp2) <- processSync central2 sreq1
+                let local3 = mergeSyncResponse local2 sresp2
+                local2 `shouldBe` local3
+                central2 `shouldBe` central3
