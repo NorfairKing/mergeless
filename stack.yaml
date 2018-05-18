@@ -1,0 +1,29 @@
+resolver: lts-11.9
+packages:
+  - mergeless
+  - genvalidity-mergeless
+extra-deps:
+  - hlint-2.0.15
+  - extra-1.6.5
+  - git: git@github.com:NorfairKing/typed-uuid.git
+    commit: 155c9ec880ca1c12f7dd8a8468b3626de8164823
+    subdirs:
+      - typed-uuid
+      - genvalidity-typed-uuid
+
+  - git: git@github.com:NorfairKing/validity.git
+    commit: a86dd3e4830c14c056a0d5d8712864d395d25b2a
+    subdirs:
+      - validity
+      - validity-containers
+      - validity-path
+      - validity-time
+      - validity-uuid
+      - genvalidity
+      - genvalidity-containers
+      - genvalidity-hspec
+      - genvalidity-hspec-aeson
+      - genvalidity-property
+      - genvalidity-time
+      - genvalidity-uuid
+

@@ -1,0 +1,26 @@
+name:                mergeless
+version:             0.0.0.0
+github:              "NorfairKing/mergeless"
+license:             MIT
+author:              "Tom Sydney Kerckhove"
+maintainer:          "syd.kerckhove@gmail.com"
+copyright:           "Copyright: (c) 2018 Tom Sydney Kerckhove"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+description:         Please see the README on GitHub at <https://github.com/NorfairKing/mergeless#readme>
+
+
+library:
+  source-dirs: src
+  dependencies:
+    - base >= 4.7 && < 5
+    - aeson
+    - containers
+    - time
+    - typed-uuid
+    - validity
+    - validity-containers
+    - validity-time
