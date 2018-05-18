@@ -29,3 +29,17 @@ spec = do
     ordSpec @(Synced Double)
     genValiditySpec @(Synced Double)
     jsonSpecOnValid @(Synced Double)
+    eqSpec @(SyncRequest Double)
+    ordSpec @(SyncRequest Double)
+    genValiditySpec @(SyncRequest Double)
+    jsonSpecOnValid @(SyncRequest Double)
+    eqSpec @(SyncResponse Double)
+    ordSpec @(SyncResponse Double)
+    genValiditySpec @(SyncResponse Double)
+    jsonSpecOnValid @(SyncResponse Double)
+    describe "makeSyncRequest" $
+        it "produces valid sync requests" $
+        producesValidsOnValids (makeSyncRequest @Double)
+    describe "mergeSyncResponse" $
+        it "produces valid sync stores" $
+        producesValidsOnValids2 (mergeSyncResponse @Double)

@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2602c5f36a427dc7744d0b9c0830a73c22f4270c2b72c389fff2945ecd9ee27b
+-- hash: 1824d8e99c74e36c660040b6189bb955c51dfb87ab3532137aabb86d1442cbd8
 
 name:           genvalidity-mergeless
 version:        0.0.0.0
@@ -31,7 +31,8 @@ library
   hs-source-dirs:
       src
   build-depends:
-      base >=4.7 && <5
+      QuickCheck
+    , base >=4.7 && <5
     , genvalidity
     , genvalidity-containers
     , genvalidity-time

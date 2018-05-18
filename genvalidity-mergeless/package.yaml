@@ -17,11 +17,12 @@ library:
   source-dirs: src
   dependencies:
     - base >= 4.7 && < 5
-    - mergeless
+    - QuickCheck
     - genvalidity
     - genvalidity-containers
     - genvalidity-time
     - genvalidity-typed-uuid
+    - mergeless
 
 tests:
   genvalidity-mergeless-test:
