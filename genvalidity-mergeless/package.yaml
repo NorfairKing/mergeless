@@ -33,9 +33,14 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+      - QuickCheck
       - base >= 4.7 && < 5
+      - containers
       - genvalidity-hspec
       - genvalidity-hspec-aeson
       - genvalidity-mergeless
       - hspec
       - mergeless
+      - mtl
+      - typed-uuid
+      - uuid

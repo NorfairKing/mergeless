@@ -2,6 +2,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Data.Mergeless
     ( Store(..)
@@ -19,11 +20,10 @@ module Data.Mergeless
 
 import Control.Applicative
 import Control.Monad.IO.Class
+import Control.Monad.State.Strict
 import Data.Aeson
-import Data.Function
 import Data.List
-import qualified Data.Map as M
-import Data.Map (Map)
+import Data.Map.Strict (Map)
 import Data.Maybe
 import qualified Data.Set as S
 import Data.Set (Set)
@@ -239,27 +239,97 @@ mergeSyncResponse s SyncResponse {..} =
 
 newtype CentralStore a = CentralStore
     { centralStoreItems :: Map (UUID a) a
-    } deriving (Show, Eq, Generic)
+    } deriving (Show, Eq, Ord, Generic)
 
 instance (Validity a, Ord a) => Validity (CentralStore a)
+
+instance (FromJSON a, Ord a) => FromJSON (CentralStore a)
+
+instance (ToJSON a, Ord a) => ToJSON (CentralStore a)
 
 processSync ::
        (Ord a, MonadIO m)
     => CentralStore a
     -> SyncRequest a
-    -> m (CentralStore a, SyncResponse a)
-processSync = processSyncWith nextRandomUUID
+    -> m (SyncResponse a, CentralStore a)
+processSync cs sr = do
+    now <- liftIO getCurrentTime
+    processSyncWith nextRandomUUID now cs sr
 
 -- | A process a sync request with a custom UUID generation function
 --
 -- Use this function if you want to process sync requests purely with a pseudorandom generator
 processSyncWith ::
-       Ord a
+       forall a m. (Ord a, Monad m)
     => m (UUID a)
+    -> UTCTime
     -> CentralStore a
     -> SyncRequest a
-    -> m (CentralStore a, SyncResponse a)
-processSyncWith genUuid CentralStore {..} SyncRequest {..} = undefined
+    -> m (SyncResponse a, CentralStore a)
+processSyncWith genUuid now cs SyncRequest {..} =
+    flip runStateT cs $ do
+        deleteUndeleted
+        -- First we delete the items that were deleted locally but not yet remotely.
+        -- Then we find the items that have been deleted remotely but not locally
+        deletedRemotely <- syncItemsToBeDeletedLocally
+        -- Then we find the items that have appeared remotely but aren't known locally
+        newRemoteItems <- syncNewRemoteItems
+        -- Then we add the items that should be added.
+        newLocalItems <- syncAddedItems
+        pure
+            SyncResponse
+            { syncResponseNewRemoteItems = newRemoteItems
+            , syncResponseAddedItems = newLocalItems
+            , syncResponseItemsToBeDeletedLocally = deletedRemotely
+            }
+  where
+    deleteUndeleted :: StateT (CentralStore a) m ()
+    deleteUndeleted = pure () -- TODO actually delete items
+        -- runDb $
+        -- deleteWhere
+        --     [ IntrayItemUserId ==. authCookieUserUUID
+        --     , IntrayItemIdentifier <-. syncRequestUndeletedItems
+        --     ]
+    syncItemsToBeDeletedLocally :: StateT (CentralStore a) m (Set (UUID a))
+    syncItemsToBeDeletedLocally = pure S.empty
+        -- TODO actually sync items to be deleted locally
+        -- foundItems <-
+        --     runDb $
+        --     selectList
+        --         [ IntrayItemUserId ==. authCookieUserUUID
+        --         , IntrayItemIdentifier <-. syncRequestSyncedItems
+        --         ]
+        --         []
+        -- -- 'foundItems' are the items that HAVEN'T been deleted
+        -- -- So, the items that have been deleted are the ones in 'syncRequestSyncedItems' but not
+        -- -- in 'foundItems'.
+        -- pure $
+        --     syncRequestSyncedItems \\
+        --     map (intrayItemIdentifier . entityVal) foundItems
+    syncNewRemoteItems :: StateT (CentralStore a) m (Set (Synced a))
+    syncNewRemoteItems = pure S.empty -- TODO actually sync new remote items
+        -- map (makeItemInfo . entityVal) <$>
+        -- runDb
+        --     (selectList
+        --          [ IntrayItemUserId ==. authCookieUserUUID
+        --          , IntrayItemIdentifier /<-. syncRequestSyncedItems
+        --          ]
+        --          [])
+    syncAddedItems :: StateT (CentralStore a) m (Set (Synced a))
+    syncAddedItems =
+        fmap S.fromList $
+        forM (S.toList syncRequestAddedItems) $ \Added {..} -> do
+            uuid <- lift genUuid
+                -- TODO actually insert
+                -- runDb $
+                --     insert_ $ makeIntrayItem authCookieUserUUID uuid now addedValue
+            pure
+                Synced
+                { syncedUuid = uuid
+                , syncedCreated = addedAdded
+                , syncedSynced = now
+                , syncedValue = addedValue
+                }
 
 mapSetMaybe :: Ord b => (a -> Maybe b) -> Set a -> Set b
 mapSetMaybe func = S.map fromJust . S.filter isJust . S.map func
