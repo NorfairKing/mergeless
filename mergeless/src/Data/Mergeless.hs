@@ -57,9 +57,9 @@ instance ToJSON a => ToJSON (Store a) where
     toJSON (Store s) = toJSON s
 
 data StoreItem a
-    = UnsyncedItem (Added a)
-    | SyncedItem (Synced a)
-    | UndeletedItem (UUID a)
+    = UnsyncedItem !(Added a)
+    | SyncedItem !(Synced a)
+    | UndeletedItem !(UUID a)
     deriving (Show, Eq, Ord, Generic)
 
 instance Validity a => Validity (StoreItem a)
@@ -75,8 +75,8 @@ instance ToJSON a => ToJSON (StoreItem a) where
     toJSON (UndeletedItem a) = toJSON a
 
 data Added a = Added
-    { addedValue :: a
-    , addedAdded :: UTCTime
+    { addedValue :: !a
+    , addedAdded :: !UTCTime
     } deriving (Show, Eq, Ord, Generic)
 
 instance Validity a => Validity (Added a)
@@ -89,10 +89,10 @@ instance ToJSON a => ToJSON (Added a) where
     toJSON Added {..} = object ["value" .= addedValue, "added" .= addedAdded]
 
 data Synced a = Synced
-    { syncedUuid :: UUID a
-    , syncedValue :: a
-    , syncedCreated :: UTCTime
-    , syncedSynced :: UTCTime
+    { syncedUuid :: !(UUID a)
+    , syncedValue :: !a
+    , syncedCreated :: !UTCTime
+    , syncedSynced :: !UTCTime
     } deriving (Show, Eq, Ord, Generic)
 
 instance Validity a => Validity (Synced a)
@@ -113,9 +113,9 @@ instance ToJSON a => ToJSON (Synced a) where
             ]
 
 data SyncRequest a = SyncRequest
-    { syncRequestAddedItems :: Set (Added a)
-    , syncRequestSyncedItems :: Set (UUID a)
-    , syncRequestUndeletedItems :: Set (UUID a)
+    { syncRequestAddedItems :: !(Set (Added a))
+    , syncRequestSyncedItems :: !(Set (UUID a))
+    , syncRequestUndeletedItems :: !(Set (UUID a))
     } deriving (Show, Eq, Ord, Generic)
 
 instance (Validity a, Ord a) => Validity (SyncRequest a) where
@@ -145,9 +145,9 @@ instance ToJSON a => ToJSON (SyncRequest a) where
             ]
 
 data SyncResponse a = SyncResponse
-    { syncResponseAddedItems :: Set (Synced a)
-    , syncResponseNewRemoteItems :: Set (Synced a)
-    , syncResponseItemsToBeDeletedLocally :: Set (UUID a)
+    { syncResponseAddedItems :: !(Set (Synced a))
+    , syncResponseNewRemoteItems :: !(Set (Synced a))
+    , syncResponseItemsToBeDeletedLocally :: !(Set (UUID a))
     } deriving (Show, Eq, Ord, Generic)
 
 instance (Validity a, Ord a) => Validity (SyncResponse a) where
@@ -239,13 +239,9 @@ mergeSyncResponse s SyncResponse {..} =
 
 newtype CentralStore a = CentralStore
     { centralStoreItems :: Map (UUID a) a
-    } deriving (Show, Eq, Ord, Generic)
+    } deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
 instance (Validity a, Ord a) => Validity (CentralStore a)
-
-instance (FromJSON a, Ord a) => FromJSON (CentralStore a)
-
-instance (ToJSON a, Ord a) => ToJSON (CentralStore a)
 
 processSync ::
        (Ord a, MonadIO m)

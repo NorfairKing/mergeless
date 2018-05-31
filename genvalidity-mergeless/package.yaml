@@ -42,5 +42,6 @@ tests:
       - hspec
       - mergeless
       - mtl
+      - random
       - typed-uuid
       - uuid

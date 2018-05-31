@@ -6,11 +6,13 @@ module Data.MergelessSpec
     ( spec
     ) where
 
+import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import qualified Data.UUID as UUID
 import qualified Data.UUID.Typed as Typed
 import Data.Word
 import GHC.Generics (Generic)
+import System.Random
 
 import Control.Monad.State
 
@@ -62,18 +64,56 @@ spec = do
         it "produces valid sync stores" $
         producesValidsOnValids2 (mergeSyncResponse @Double)
     describe "processSyncWith" $ do
-        it "makes no change if the sync request is empty" $
+        it
+            "makes no change if the sync request is empty with an empty sync response" $
             forAllValid $ \synct ->
                 forAllValid $ \cs -> do
-                    let (_, cs') =
+                    let (sr, cs') =
                             evalD $
-                            processSyncWith
-                                @Double
-                                genD
-                                synct
-                                cs
-                                (SyncRequest S.empty S.empty S.empty)
+                            processSyncWith @Double genD synct cs $
+                            SyncRequest S.empty S.empty S.empty
                     cs' `shouldBe` cs
+                    sr `shouldBe` SyncResponse S.empty S.empty S.empty
+        it "deletes the deleted items" $
+            forAllValid $ \synct ->
+                forAllValid $ \cs ->
+                    forAllValid $ \sreq -> do
+                        let (_, cs') =
+                                evalD $
+                                processSyncWith @Double genD synct cs sreq
+                        syncRequestUndeletedItems sreq `shouldSatisfy`
+                            (not .
+                             any
+                                 (`S.member` (M.keysSet $ centralStoreItems cs')))
+        it "returns the items that were added in the sync response" $
+            forAllValid $ \synct ->
+                forAllValid $ \cs ->
+                    forAllValid $ \sreq -> do
+                        let (sresp, _) =
+                                evalD $
+                                processSyncWith @Double genD synct cs sreq
+                        S.map syncedValue (syncResponseAddedItems sresp) `shouldBe`
+                            S.map addedValue (syncRequestAddedItems sreq)
+        it "adds the items that were added" $
+            forAllValid $ \synct ->
+                forAllValid $ \cs ->
+                    forAllValid $ \sreq -> do
+                        let (_, cs') =
+                                evalD $
+                                processSyncWith @Double genD synct cs sreq
+                        S.map addedValue (syncRequestAddedItems sreq) `shouldSatisfy`
+                            all (`elem` (M.elems $ centralStoreItems cs'))
+        it "returns all remotely added items" $
+            forAllValid $ \synct ->
+                forAllValid $ \cs ->
+                    forAllValid $ \sreq -> do
+                        let (sresp, _) =
+                                evalD $
+                                processSyncWith @Double genD synct cs sreq
+                        S.map syncedUuid (syncResponseNewRemoteItems sresp) `shouldBe`
+                            S.difference
+                                (M.keysSet $ centralStoreItems cs)
+                                (syncRequestSyncedItems sreq)
         it "produces valid results when using determinisitic UUIDs" $
             producesValidsOnValids3 $ \synct cs sr ->
                 evalD $ processSyncWith @Double genD synct cs sr
@@ -82,7 +122,7 @@ spec = do
                 forAll (genValid `suchThat` (>= synct1)) $ \synct2 ->
                     forAllValid $ \central1 ->
                         forAllValid $ \local1 -> do
-                            let d1 = 0
+                            let d1 = mkStdGen 42
                             let sreq1 = makeSyncRequest @Double local1
                             let ((sresp1, central2), d2) =
                                     runD
@@ -142,17 +182,18 @@ spec = do
                 central2 `shouldBe` central3
 
 newtype D a = D
-    { unD :: State Word32 a
-    } deriving (Generic, Functor, Applicative, Monad, MonadState Word32)
+    { unD :: State StdGen a
+    } deriving (Generic, Functor, Applicative, Monad, MonadState StdGen)
 
 evalD :: D a -> a
-evalD d = fst $ runD d 0
+evalD d = fst $ runD d $ mkStdGen 42
 
-runD :: D a -> Word32 -> (a, Word32)
+runD :: D a -> StdGen -> (a, StdGen)
 runD = runState . unD
 
 genD :: D (Typed.UUID a)
 genD = do
-    w <- get
-    modify (+ 1)
-    pure $ Typed.UUID $ UUID.fromWords 0 0 0 w -- TODO use the entire space? probably not necessary.
+    r <- get
+    let (u, r') = random r
+    put r'
+    pure u
