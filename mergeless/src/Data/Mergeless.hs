@@ -6,6 +6,17 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
+-- | A way to synchronise items without merge conflicts.
+--
+-- This concept has a few requirements:
+--
+-- * Items must be immutable
+-- * Items must allow for a unique identifier
+-- * Identifiers for items must be generatable in such a way that they are certainly unique.
+--
+-- There are a few obvious candidates for identifiers:
+-- * incremental identifiers
+-- * universally unique identifiers (recommended).
 module Data.Mergeless
     ( Store(..)
     , StoreItem(..)
@@ -37,6 +48,7 @@ import Data.Validity.Containers ()
 import Data.Validity.Time ()
 import GHC.Generics (Generic)
 
+-- | A client-side store of items with Id's of type @i@ and values of type @a@
 newtype Store i a = Store
     { storeItems :: Set (StoreItem i a)
     } deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
@@ -53,10 +65,11 @@ instance (Validity i, Validity a, Ord i, Ord a) => Validity (Store i a) where
                   UndeletedItem u -> Just u
             ]
 
+-- | A store item with an Id of type @i@ and a value of type @a@
 data StoreItem i a
-    = UnsyncedItem !(Added a)
-    | SyncedItem !(Synced i a)
-    | UndeletedItem i
+    = UnsyncedItem !(Added a) -- ^ A local item that has not been synchronised to the central store yet
+    | SyncedItem !(Synced i a) -- ^ A local item that has been synchronised to the central store already
+    | UndeletedItem i -- ^ An item that has been synchronised to the central store, was subsequently deleted locally but this deletion has not been synchronised to the central store yet.
     deriving (Show, Eq, Ord, Generic)
 
 instance (Validity i, Validity a) => Validity (StoreItem i a)
@@ -71,6 +84,7 @@ instance (ToJSON i, ToJSON a) => ToJSON (StoreItem i a) where
     toJSON (SyncedItem a) = toJSON a
     toJSON (UndeletedItem a) = toJSON a
 
+-- | A local item of type @a@ that has been added but not synchronised yet
 data Added a = Added
     { addedValue :: !a
     , addedCreated :: !UTCTime
@@ -85,6 +99,7 @@ instance FromJSON a => FromJSON (Added a) where
 instance ToJSON a => ToJSON (Added a) where
     toJSON Added {..} = object ["value" .= addedValue, "added" .= addedCreated]
 
+-- | A local item of type @a@ with an identifier of type @a@ that has been synchronised
 data Synced i a = Synced
     { syncedUuid :: i
     , syncedValue :: !a
@@ -109,6 +124,7 @@ instance (ToJSON i, ToJSON a) => ToJSON (Synced i a) where
             , "synced" .= syncedSynced
             ]
 
+-- | A synchronisation request for items with identifiers of type @i@ and values of type @a@
 data SyncRequest i a = SyncRequest
     { syncRequestAddedItems :: !(Set (Added a))
     , syncRequestSyncedItems :: !(Set i)
@@ -143,6 +159,7 @@ instance (ToJSON i, ToJSON a) => ToJSON (SyncRequest i a) where
             , "undeleted" .= syncRequestUndeletedItems
             ]
 
+-- | A synchronisation response for items with identifiers of type @i@ and values of type @a@
 data SyncResponse i a = SyncResponse
     { syncResponseAddedItems :: !(Set (Synced i a))
     , syncResponseNewRemoteItems :: !(Set (Synced i a))
@@ -181,6 +198,9 @@ instance (ToJSON i, ToJSON a) => ToJSON (SyncResponse i a) where
             , "deleted" .= syncResponseItemsToBeDeletedLocally
             ]
 
+-- | Produce a synchronisation request for a client-side store.
+--
+-- This request can then be sent to a central store for synchronisation.
 makeSyncRequest :: (Ord i, Ord a) => Store i a -> SyncRequest i a
 makeSyncRequest Store {..} =
     SyncRequest
@@ -198,6 +218,7 @@ makeSyncRequest Store {..} =
               _ -> Nothing
     }
 
+-- | Merge a synchronisation response back into a client-side store.
 mergeSyncResponse ::
        (Ord i, Ord a) => Store i a -> SyncResponse i a -> Store i a
 mergeSyncResponse s SyncResponse {..} =
@@ -239,6 +260,7 @@ mergeSyncResponse s SyncResponse {..} =
              withNewOwnItems
        }
 
+-- | An item in a central store with a value of type @a@
 data CentralItem a = CentralItem
     { centralValue :: a
     , centralSynced :: UTCTime
@@ -251,6 +273,7 @@ instance FromJSON a => FromJSON (CentralItem a)
 
 instance ToJSON a => ToJSON (CentralItem a)
 
+-- | A central store of items with identifiers of type @i@ and values of type @a@
 newtype CentralStore i a = CentralStore
     { centralStoreItems :: Map i (CentralItem a)
     } deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
@@ -258,6 +281,7 @@ newtype CentralStore i a = CentralStore
 instance (Validity i, Validity a, Ord i, Ord a) =>
          Validity (CentralStore i a)
 
+-- | Process a server-side synchronisation request using @getCurrentTime@
 processSync ::
        (Ord i, Ord a, MonadIO m)
     => m i
@@ -268,9 +292,11 @@ processSync genId cs sr = do
     now <- liftIO getCurrentTime
     processSyncWith genId now cs sr
 
--- | A process a sync request with a custom UUID generation function
+-- | Process a server-side synchronisation request using a time of syncing, and an identifier generation function.
 --
--- Use this function if you want to process sync requests purely with a pseudorandom generator
+-- WARNING: The identifier generation function must produce newly unique identifiers such that each new item gets a unique identifier.
+--
+-- You can use this function with deterministically-random identifiers or incrementing identifiers.
 processSyncWith ::
        forall i a m. (Ord i, Ord a, Monad m)
     => m i
