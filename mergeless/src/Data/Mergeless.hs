@@ -10,13 +10,38 @@
 --
 -- This concept has a few requirements:
 --
--- * Items must be immutable
--- * Items must allow for a unique identifier
+-- * Items must be immutable.
+-- * Items must allow for a centrally unique identifier.
 -- * Identifiers for items must be generatable in such a way that they are certainly unique.
 --
+-- Should mutation be a requirement, then it can be build such that it entails deleting the old version and creating a new version that is the modification of the old version.
+--
+--
 -- There are a few obvious candidates for identifiers:
+--
 -- * incremental identifiers
 -- * universally unique identifiers (recommended).
+--
+--
+--
+-- The typical setup is as follows:
+--
+-- * A central server is set up to synchronise with
+-- * Each client synchronises with the central server, but never with eachother
+--
+--
+-- A central server should operate as follows:
+--
+-- * The server accepts a 'SyncRequest'.
+-- * The server performs operations according to the functionality of 'processSync'.
+-- * The server respons with a 'SyncResponse'.
+--
+--
+-- A client should operate as follows:
+--
+-- * The client produces a 'SyncRequest' with 'makeSyncRequest'.
+-- * The client sends that request to the central server and gets a 'SyncResponse'.
+-- * The client then updates its local store with 'mergeSyncResponse'.
 module Data.Mergeless
     ( Store(..)
     , StoreItem(..)
@@ -262,9 +287,9 @@ mergeSyncResponse s SyncResponse {..} =
 
 -- | An item in a central store with a value of type @a@
 data CentralItem a = CentralItem
-    { centralValue :: a
-    , centralSynced :: UTCTime
-    , centralCreated :: UTCTime
+    { centralValue :: !a
+    , centralSynced :: !UTCTime
+    , centralCreated :: !UTCTime
     } deriving (Show, Eq, Ord, Generic)
 
 instance Validity a => Validity (CentralItem a)
