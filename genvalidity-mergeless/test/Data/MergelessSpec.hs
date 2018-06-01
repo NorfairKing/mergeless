@@ -8,9 +8,7 @@ module Data.MergelessSpec
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
-import qualified Data.UUID as UUID
 import qualified Data.UUID.Typed as Typed
-import Data.Word
 import GHC.Generics (Generic)
 import System.Random
 
@@ -29,32 +27,36 @@ import Data.UUID.Typed
 
 spec :: Spec
 spec = do
-    eqSpec @(Store Double)
-    ordSpec @(Store Double)
+    eqSpecOnValid @(Store Double)
+    ordSpecOnValid @(Store Double)
     genValiditySpec @(Store Double)
     jsonSpecOnValid @(Store Double)
-    eqSpec @(StoreItem Double)
-    ordSpec @(StoreItem Double)
+    eqSpecOnValid @(StoreItem Double)
+    ordSpecOnValid @(StoreItem Double)
     genValiditySpec @(StoreItem Double)
     jsonSpecOnValid @(StoreItem Double)
-    eqSpec @(Added Double)
-    ordSpec @(Added Double)
+    eqSpecOnValid @(Added Double)
+    ordSpecOnValid @(Added Double)
     genValiditySpec @(Added Double)
     jsonSpecOnValid @(Added Double)
-    eqSpec @(Synced Double)
-    ordSpec @(Synced Double)
+    eqSpecOnValid @(Synced Double)
+    ordSpecOnValid @(Synced Double)
     genValiditySpec @(Synced Double)
     jsonSpecOnValid @(Synced Double)
-    eqSpec @(SyncRequest Double)
-    ordSpec @(SyncRequest Double)
+    eqSpecOnValid @(SyncRequest Double)
+    ordSpecOnValid @(SyncRequest Double)
     genValiditySpec @(SyncRequest Double)
     jsonSpecOnValid @(SyncRequest Double)
-    eqSpec @(SyncResponse Double)
-    ordSpec @(SyncResponse Double)
+    eqSpecOnValid @(SyncResponse Double)
+    ordSpecOnValid @(SyncResponse Double)
     genValiditySpec @(SyncResponse Double)
     jsonSpecOnValid @(SyncResponse Double)
-    eqSpec @(CentralStore Double)
-    ordSpec @(CentralStore Double)
+    eqSpecOnValid @(CentralItem Double)
+    ordSpecOnValid @(CentralItem Double)
+    genValiditySpec @(CentralItem Double)
+    jsonSpecOnValid @(CentralItem Double)
+    eqSpecOnValid @(CentralStore Double)
+    ordSpecOnValid @(CentralStore Double)
     genValiditySpec @(CentralStore Double)
     jsonSpecOnValid @(CentralStore Double)
     describe "makeSyncRequest" $
@@ -65,13 +67,14 @@ spec = do
         producesValidsOnValids2 (mergeSyncResponse @Double)
     describe "processSyncWith" $ do
         it
-            "makes no change if the sync request is empty with an empty sync response" $
+            "makes no change if the sync request reflects the same local state with an empty sync response" $
             forAllValid $ \synct ->
-                forAllValid $ \cs -> do
+                forAllValid $ \sis -> do
+                    let cs = CentralStore sis
                     let (sr, cs') =
                             evalD $
                             processSyncWith @Double genD synct cs $
-                            SyncRequest S.empty S.empty S.empty
+                            SyncRequest S.empty (M.keysSet sis) S.empty
                     cs' `shouldBe` cs
                     sr `shouldBe` SyncResponse S.empty S.empty S.empty
         it "deletes the deleted items" $
@@ -94,6 +97,24 @@ spec = do
                                 processSyncWith @Double genD synct cs sreq
                         S.map syncedValue (syncResponseAddedItems sresp) `shouldBe`
                             S.map addedValue (syncRequestAddedItems sreq)
+        it "returns the single added item" $
+            forAllValid $ \synct ->
+                forAllValid $ \cs ->
+                    forAllValid $ \ai -> do
+                        let (sresp, _) =
+                                evalD $
+                                processSyncWith
+                                    @Double
+                                    genD
+                                    synct
+                                    cs
+                                    SyncRequest
+                                    { syncRequestAddedItems = S.singleton ai
+                                    , syncRequestSyncedItems = S.empty
+                                    , syncRequestUndeletedItems = S.empty
+                                    }
+                        S.map syncedValue (syncResponseAddedItems sresp) `shouldBe`
+                            S.singleton (addedValue ai)
         it "adds the items that were added" $
             forAllValid $ \synct ->
                 forAllValid $ \cs ->
@@ -102,8 +123,93 @@ spec = do
                                 evalD $
                                 processSyncWith @Double genD synct cs sreq
                         S.map addedValue (syncRequestAddedItems sreq) `shouldSatisfy`
-                            all (`elem` (M.elems $ centralStoreItems cs'))
-        it "returns all remotely added items" $
+                            all
+                                (`elem` (M.elems $
+                                         M.map centralValue $
+                                         centralStoreItems cs'))
+        it
+            "returns the single remotely added item if the sync request is empty and the central store has one item" $
+            forAllValid $ \synct ->
+                forAllValid $ \(uuid, ci) -> do
+                    let (sresp, _) =
+                            evalD $
+                            processSyncWith
+                                @Double
+                                genD
+                                synct
+                                (CentralStore $ M.singleton uuid ci)
+                                SyncRequest
+                                { syncRequestAddedItems = S.empty
+                                , syncRequestSyncedItems = S.empty
+                                , syncRequestUndeletedItems = S.empty
+                                }
+                    S.map syncedValue (syncResponseNewRemoteItems sresp) `shouldBe`
+                        S.singleton (centralValue ci)
+        it
+            "returns all remotely added items when no items are locally added or deleted" $
+            forAllValid $ \synct ->
+                forAllValid $ \cs ->
+                    forAllValid $ \sis -> do
+                        let (sresp, _) =
+                                evalD $
+                                processSyncWith
+                                    @Double
+                                    genD
+                                    synct
+                                    cs
+                                    SyncRequest
+                                    { syncRequestAddedItems = S.empty
+                                    , syncRequestSyncedItems = sis
+                                    , syncRequestUndeletedItems = S.empty
+                                    }
+                        S.map syncedUuid (syncResponseNewRemoteItems sresp) `shouldBe`
+                            S.difference (M.keysSet $ centralStoreItems cs) sis
+        it "returns all remotely added items when no items are locally deleted " $
+            forAllValid $ \synct ->
+                forAllValid $ \cs ->
+                    forAllValid $ \sis ->
+                        forAllValid $ \ais -> do
+                            let (sresp, _) =
+                                    evalD $
+                                    processSyncWith
+                                        @Double
+                                        genD
+                                        synct
+                                        cs
+                                        SyncRequest
+                                        { syncRequestAddedItems = ais
+                                        , syncRequestSyncedItems = sis
+                                        , syncRequestUndeletedItems = S.empty
+                                        }
+                            S.map syncedUuid (syncResponseNewRemoteItems sresp) `shouldBe`
+                                S.difference
+                                    (M.keysSet $ centralStoreItems cs)
+                                    sis
+        it
+            "returns all remotely added items that weren't deleted when no items are locally added " $
+            forAllValid $ \synct ->
+                forAllValid $ \cs ->
+                    forAllValid $ \sis ->
+                        forAllValid $ \dis -> do
+                            let (sresp, _) =
+                                    evalD $
+                                    processSyncWith
+                                        @Double
+                                        genD
+                                        synct
+                                        cs
+                                        SyncRequest
+                                        { syncRequestAddedItems = S.empty
+                                        , syncRequestSyncedItems = sis
+                                        , syncRequestUndeletedItems = dis
+                                        }
+                            S.map syncedUuid (syncResponseNewRemoteItems sresp) `shouldBe`
+                                S.difference
+                                    (S.difference
+                                         (M.keysSet $ centralStoreItems cs)
+                                         dis)
+                                    sis
+        it "returns all remotely added items that weren't deleted" $
             forAllValid $ \synct ->
                 forAllValid $ \cs ->
                     forAllValid $ \sreq -> do
@@ -112,7 +218,9 @@ spec = do
                                 processSyncWith @Double genD synct cs sreq
                         S.map syncedUuid (syncResponseNewRemoteItems sresp) `shouldBe`
                             S.difference
-                                (M.keysSet $ centralStoreItems cs)
+                                (S.difference
+                                     (M.keysSet $ centralStoreItems cs)
+                                     (syncRequestUndeletedItems sreq))
                                 (syncRequestSyncedItems sreq)
         it "produces valid results when using determinisitic UUIDs" $
             producesValidsOnValids3 $ \synct cs sr ->

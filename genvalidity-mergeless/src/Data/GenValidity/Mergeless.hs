@@ -56,6 +56,14 @@ instance (GenValid a, Ord a) => GenValid (SyncResponse a) where
 
 instance (GenInvalid a, Ord a) => GenInvalid (SyncResponse a)
 
+instance GenUnchecked a => GenUnchecked (CentralItem a)
+
+instance GenValid a => GenValid (CentralItem a) where
+    genValid =
+        (CentralItem <$> genValid <*> genValid <*> genValid) `suchThat` isValid
+
+instance GenInvalid a => GenInvalid (CentralItem a)
+
 instance (GenUnchecked a, Ord a) => GenUnchecked (CentralStore a)
 
 instance (GenValid a, Ord a) => GenValid (CentralStore a) where

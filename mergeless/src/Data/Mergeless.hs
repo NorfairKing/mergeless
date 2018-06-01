@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -14,6 +16,7 @@ module Data.Mergeless
     , SyncResponse(..)
     , mergeSyncResponse
     , CentralStore(..)
+    , CentralItem(..)
     , processSync
     , processSyncWith
     ) where
@@ -24,6 +27,7 @@ import Control.Monad.State.Strict
 import Data.Aeson
 import Data.List
 import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as M
 import Data.Maybe
 import qualified Data.Set as S
 import Data.Set (Set)
@@ -76,7 +80,7 @@ instance ToJSON a => ToJSON (StoreItem a) where
 
 data Added a = Added
     { addedValue :: !a
-    , addedAdded :: !UTCTime
+    , addedCreated :: !UTCTime
     } deriving (Show, Eq, Ord, Generic)
 
 instance Validity a => Validity (Added a)
@@ -86,7 +90,7 @@ instance FromJSON a => FromJSON (Added a) where
         withObject "Added" $ \o -> Added <$> o .: "value" <*> o .: "added"
 
 instance ToJSON a => ToJSON (Added a) where
-    toJSON Added {..} = object ["value" .= addedValue, "added" .= addedAdded]
+    toJSON Added {..} = object ["value" .= addedValue, "added" .= addedCreated]
 
 data Synced a = Synced
     { syncedUuid :: !(UUID a)
@@ -205,7 +209,7 @@ mergeSyncResponse s SyncResponse {..} =
                     UnsyncedItem Added {..} ->
                         case find
                                  (\Synced {..} ->
-                                      syncedCreated == addedAdded &&
+                                      syncedCreated == addedCreated &&
                                       syncedValue == addedValue)
                                  syncResponseAddedItems of
                             Nothing -> Just si -- If it wasn't added (for whatever reason), just leave it as unsynced
@@ -237,8 +241,20 @@ mergeSyncResponse s SyncResponse {..} =
              withNewOwnItems
        }
 
+data CentralItem a = CentralItem
+    { centralValue :: a
+    , centralSynced :: UTCTime
+    , centralCreated :: UTCTime
+    } deriving (Show, Eq, Ord, Generic)
+
+instance Validity a => Validity (CentralItem a)
+
+instance FromJSON a => FromJSON (CentralItem a)
+
+instance ToJSON a => ToJSON (CentralItem a)
+
 newtype CentralStore a = CentralStore
-    { centralStoreItems :: Map (UUID a) a
+    { centralStoreItems :: Map (UUID a) (CentralItem a)
     } deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
 instance (Validity a, Ord a) => Validity (CentralStore a)
@@ -280,52 +296,52 @@ processSyncWith genUuid now cs SyncRequest {..} =
             }
   where
     deleteUndeleted :: StateT (CentralStore a) m ()
-    deleteUndeleted = pure () -- TODO actually delete items
-        -- runDb $
-        -- deleteWhere
-        --     [ IntrayItemUserId ==. authCookieUserUUID
-        --     , IntrayItemIdentifier <-. syncRequestUndeletedItems
-        --     ]
+    deleteUndeleted = deleteMany syncRequestUndeletedItems
+    deleteMany :: Set (UUID a) -> StateT (CentralStore a) m ()
+    deleteMany s = modC (`M.withoutKeys` s)
     syncItemsToBeDeletedLocally :: StateT (CentralStore a) m (Set (UUID a))
-    syncItemsToBeDeletedLocally = pure S.empty
-        -- TODO actually sync items to be deleted locally
-        -- foundItems <-
-        --     runDb $
-        --     selectList
-        --         [ IntrayItemUserId ==. authCookieUserUUID
-        --         , IntrayItemIdentifier <-. syncRequestSyncedItems
-        --         ]
-        --         []
-        -- -- 'foundItems' are the items that HAVEN'T been deleted
-        -- -- So, the items that have been deleted are the ones in 'syncRequestSyncedItems' but not
-        -- -- in 'foundItems'.
-        -- pure $
-        --     syncRequestSyncedItems \\
-        --     map (intrayItemIdentifier . entityVal) foundItems
+    syncItemsToBeDeletedLocally = do
+        foundItems <- query (`M.restrictKeys` syncRequestSyncedItems)
+        pure $ syncRequestSyncedItems `S.difference` M.keysSet foundItems
     syncNewRemoteItems :: StateT (CentralStore a) m (Set (Synced a))
-    syncNewRemoteItems = pure S.empty -- TODO actually sync new remote items
-        -- map (makeItemInfo . entityVal) <$>
-        -- runDb
-        --     (selectList
-        --          [ IntrayItemUserId ==. authCookieUserUUID
-        --          , IntrayItemIdentifier /<-. syncRequestSyncedItems
-        --          ]
-        --          [])
+    syncNewRemoteItems = do
+        syncedValues <- query (`M.withoutKeys` syncRequestSyncedItems)
+        pure $
+            S.fromList $
+            flip map (M.toList syncedValues) $ \(u, CentralItem {..}) ->
+                Synced
+                { syncedUuid = u
+                , syncedValue = centralValue
+                , syncedCreated = centralCreated
+                , syncedSynced = centralSynced
+                }
+    query :: (Map (UUID a) (CentralItem a) -> b) -> StateT (CentralStore a) m b
+    query func = gets $ func . centralStoreItems
     syncAddedItems :: StateT (CentralStore a) m (Set (Synced a))
     syncAddedItems =
         fmap S.fromList $
         forM (S.toList syncRequestAddedItems) $ \Added {..} -> do
             uuid <- lift genUuid
-                -- TODO actually insert
-                -- runDb $
-                --     insert_ $ makeIntrayItem authCookieUserUUID uuid now addedValue
+            ins
+                uuid
+                CentralItem
+                { centralValue = addedValue
+                , centralCreated = addedCreated
+                , centralSynced = now
+                }
             pure
                 Synced
                 { syncedUuid = uuid
-                , syncedCreated = addedAdded
+                , syncedCreated = addedCreated
                 , syncedSynced = now
                 , syncedValue = addedValue
                 }
+    ins :: UUID a -> CentralItem a -> StateT (CentralStore a) m ()
+    ins uuid val = modC $ M.insert uuid val
+    modC ::
+           (Map (UUID a) (CentralItem a) -> Map (UUID a) (CentralItem a))
+        -> StateT (CentralStore a) m ()
+    modC func = modify (\(CentralStore m) -> CentralStore $ func m)
 
 mapSetMaybe :: Ord b => (a -> Maybe b) -> Set a -> Set b
 mapSetMaybe func = S.map fromJust . S.filter isJust . S.map func
