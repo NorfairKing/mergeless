@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ee6764c4ce0cc2519179cf65349074479a0f50c58892ef89f77c55d965547c37
+-- hash: 6e70257c58f9b084549d6af348ed63f6b22a88fc476bc7ccf0ccc1aa729f5891
 
 name:           genvalidity-mergeless
 version:        0.0.0.0
@@ -60,6 +60,7 @@ test-suite genvalidity-mergeless-test
     , mergeless
     , mtl
     , random
+    , time
     , typed-uuid
     , uuid
   default-language: Haskell2010

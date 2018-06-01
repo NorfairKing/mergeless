@@ -8,6 +8,7 @@ module Data.MergelessSpec
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
+import Data.Time
 import qualified Data.UUID.Typed as Typed
 import GHC.Generics (Generic)
 import System.Random
@@ -252,7 +253,85 @@ spec = do
                                      (M.keysSet $ centralStoreItems cs)
                                      (syncRequestUndeletedItems sreq))
                                 (syncRequestSyncedItems sreq)
-        it "produces valid results when using incrementing words" $
+        it
+            "successfully syncs two clients using a central store when using incrementing words" $
+            forAllValid $ \store1 ->
+                forAllValid $ \(synct1, synct2, synct3) -> do
+                    let (s1, s2) =
+                            evalI $ do
+                                let central = CentralStore M.empty
+                                let store2 = Store S.empty
+                                let sreq1 = makeSyncRequest @Word @Double store1
+                                (sresp1, central') <-
+                                    processSyncWith genI synct1 central sreq1
+                                let store1' = mergeSyncResponse store1 sresp1
+                                let sreq2 = makeSyncRequest store2
+                                (sresp2, central'') <-
+                                    processSyncWith genI synct2 central' sreq2
+                                let store2' = mergeSyncResponse store2 sresp2
+                                let sreq3 = makeSyncRequest store1'
+                                (sresp3, _) <-
+                                    processSyncWith genI synct3 central'' sreq3
+                                let store1'' = mergeSyncResponse store1' sresp3
+                                pure (store1'', store2')
+                    s1 `shouldBe` s2
+        it
+            "successfully syncs two clients using a central store when using deterministic UUIDs" $
+            forAllValid $ \store1 ->
+                forAllValid $ \(synct1, synct2, synct3) -> do
+                    let (s1, s2) =
+                            evalD $ do
+                                let central = CentralStore M.empty
+                                let store2 = Store S.empty
+                                let sreq1 =
+                                        makeSyncRequest
+                                            @(UUID Double)
+                                            @Double
+                                            store1
+                                (sresp1, central') <-
+                                    processSyncWith genD synct1 central sreq1
+                                let store1' = mergeSyncResponse store1 sresp1
+                                let sreq2 = makeSyncRequest store2
+                                (sresp2, central'') <-
+                                    processSyncWith genD synct2 central' sreq2
+                                let store2' = mergeSyncResponse store2 sresp2
+                                let sreq3 = makeSyncRequest store1'
+                                (sresp3, _) <-
+                                    processSyncWith genD synct3 central'' sreq3
+                                let store1'' = mergeSyncResponse store1' sresp3
+                                pure (store1'', store2')
+                    s1 `shouldBe` s2
+        it
+            "produces valid results when building up a central store from nothing using incrementing words" $
+            forAllValid $ \tups ->
+                shouldBeValid $
+                evalI $ do
+                    let initCentralStore = CentralStore M.empty
+                    let go cs (store, synct) = do
+                            let sreq = makeSyncRequest @Word @Double store
+                            (_, central') <- processSyncWith genI synct cs sreq
+                            pure central'
+                    foldM
+                        go
+                        initCentralStore
+                        (tups :: [(Store Word Double, UTCTime)])
+        it
+            "produces valid results when building up a central store from nothing using deterministic UUIDs" $
+            forAllValid $ \tups ->
+                shouldBeValid $
+                evalD $ do
+                    let initCentralStore = CentralStore M.empty
+                    let go cs (store, synct) = do
+                            let sreq =
+                                    makeSyncRequest @(UUID Double) @Double store
+                            (_, central') <- processSyncWith genD synct cs sreq
+                            pure central'
+                    foldM
+                        go
+                        initCentralStore
+                        (tups :: [(Store (UUID Double) Double, UTCTime)])
+        -- This property does not hold.
+        xit "produces valid results when using incrementing words" $
             producesValidsOnValids3 $ \synct cs sr ->
                 evalI $ processSyncWith @Word @Double genI synct cs sr
         it "produces valid results when using determinisitic UUIDs" $

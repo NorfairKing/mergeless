@@ -43,5 +43,6 @@ tests:
       - mergeless
       - mtl
       - random
+      - time
       - typed-uuid
       - uuid
