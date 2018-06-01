@@ -20,6 +20,7 @@ import Test.Validity
 import Test.Validity.Aeson
 
 import Data.GenValidity.Mergeless ()
+import Data.GenValidity.UUID.Typed ()
 import Data.Mergeless
 import Data.UUID.Typed
 
@@ -27,44 +28,44 @@ import Data.UUID.Typed
 
 spec :: Spec
 spec = do
-    eqSpecOnValid @(Store Double)
-    ordSpecOnValid @(Store Double)
-    genValiditySpec @(Store Double)
-    jsonSpecOnValid @(Store Double)
-    eqSpecOnValid @(StoreItem Double)
-    ordSpecOnValid @(StoreItem Double)
-    genValiditySpec @(StoreItem Double)
-    jsonSpecOnValid @(StoreItem Double)
+    eqSpecOnValid @(Store Double Double)
+    ordSpecOnValid @(Store Double Double)
+    genValiditySpec @(Store Double Double)
+    jsonSpecOnValid @(Store Double Double)
+    eqSpecOnValid @(StoreItem Double Double)
+    ordSpecOnValid @(StoreItem Double Double)
+    genValiditySpec @(StoreItem Double Double)
+    jsonSpecOnValid @(StoreItem Double Double)
     eqSpecOnValid @(Added Double)
     ordSpecOnValid @(Added Double)
     genValiditySpec @(Added Double)
     jsonSpecOnValid @(Added Double)
-    eqSpecOnValid @(Synced Double)
-    ordSpecOnValid @(Synced Double)
-    genValiditySpec @(Synced Double)
-    jsonSpecOnValid @(Synced Double)
-    eqSpecOnValid @(SyncRequest Double)
-    ordSpecOnValid @(SyncRequest Double)
-    genValiditySpec @(SyncRequest Double)
-    jsonSpecOnValid @(SyncRequest Double)
-    eqSpecOnValid @(SyncResponse Double)
-    ordSpecOnValid @(SyncResponse Double)
-    genValiditySpec @(SyncResponse Double)
-    jsonSpecOnValid @(SyncResponse Double)
+    eqSpecOnValid @(Synced Double Double)
+    ordSpecOnValid @(Synced Double Double)
+    genValiditySpec @(Synced Double Double)
+    jsonSpecOnValid @(Synced Double Double)
+    eqSpecOnValid @(SyncRequest Double Double)
+    ordSpecOnValid @(SyncRequest Double Double)
+    genValiditySpec @(SyncRequest Double Double)
+    jsonSpecOnValid @(SyncRequest Double Double)
+    eqSpecOnValid @(SyncResponse Double Double)
+    ordSpecOnValid @(SyncResponse Double Double)
+    genValiditySpec @(SyncResponse Double Double)
+    jsonSpecOnValid @(SyncResponse Double Double)
     eqSpecOnValid @(CentralItem Double)
     ordSpecOnValid @(CentralItem Double)
     genValiditySpec @(CentralItem Double)
     jsonSpecOnValid @(CentralItem Double)
-    eqSpecOnValid @(CentralStore Double)
-    ordSpecOnValid @(CentralStore Double)
-    genValiditySpec @(CentralStore Double)
-    jsonSpecOnValid @(CentralStore Double)
+    eqSpecOnValid @(CentralStore Double Double)
+    ordSpecOnValid @(CentralStore Double Double)
+    genValiditySpec @(CentralStore Double Double)
+    jsonSpecOnValid @(CentralStore Double Double)
     describe "makeSyncRequest" $
         it "produces valid sync requests" $
-        producesValidsOnValids (makeSyncRequest @Double)
+        producesValidsOnValids (makeSyncRequest @Double @Double)
     describe "mergeSyncResponse" $
         it "produces valid sync stores" $
-        producesValidsOnValids2 (mergeSyncResponse @Double)
+        producesValidsOnValids2 (mergeSyncResponse @Double @Double)
     describe "processSyncWith" $ do
         it
             "makes no change if the sync request reflects the same local state with an empty sync response" $
@@ -73,7 +74,7 @@ spec = do
                     let cs = CentralStore sis
                     let (sr, cs') =
                             evalD $
-                            processSyncWith @Double genD synct cs $
+                            processSyncWith @(UUID Double) @Double genD synct cs $
                             SyncRequest S.empty (M.keysSet sis) S.empty
                     cs' `shouldBe` cs
                     sr `shouldBe` SyncResponse S.empty S.empty S.empty
@@ -83,7 +84,13 @@ spec = do
                     forAllValid $ \sreq -> do
                         let (_, cs') =
                                 evalD $
-                                processSyncWith @Double genD synct cs sreq
+                                processSyncWith
+                                    @(UUID Double)
+                                    @Double
+                                    genD
+                                    synct
+                                    cs
+                                    sreq
                         syncRequestUndeletedItems sreq `shouldSatisfy`
                             (not .
                              any
@@ -94,7 +101,13 @@ spec = do
                     forAllValid $ \sreq -> do
                         let (sresp, _) =
                                 evalD $
-                                processSyncWith @Double genD synct cs sreq
+                                processSyncWith
+                                    @(UUID Double)
+                                    @Double
+                                    genD
+                                    synct
+                                    cs
+                                    sreq
                         S.map syncedValue (syncResponseAddedItems sresp) `shouldBe`
                             S.map addedValue (syncRequestAddedItems sreq)
         it "returns the single added item" $
@@ -104,6 +117,7 @@ spec = do
                         let (sresp, _) =
                                 evalD $
                                 processSyncWith
+                                    @(UUID Double)
                                     @Double
                                     genD
                                     synct
@@ -121,7 +135,13 @@ spec = do
                     forAllValid $ \sreq -> do
                         let (_, cs') =
                                 evalD $
-                                processSyncWith @Double genD synct cs sreq
+                                processSyncWith
+                                    @(UUID Double)
+                                    @Double
+                                    genD
+                                    synct
+                                    cs
+                                    sreq
                         S.map addedValue (syncRequestAddedItems sreq) `shouldSatisfy`
                             all
                                 (`elem` (M.elems $
@@ -134,6 +154,7 @@ spec = do
                     let (sresp, _) =
                             evalD $
                             processSyncWith
+                                @(UUID Double)
                                 @Double
                                 genD
                                 synct
@@ -153,6 +174,7 @@ spec = do
                         let (sresp, _) =
                                 evalD $
                                 processSyncWith
+                                    @(UUID Double)
                                     @Double
                                     genD
                                     synct
@@ -172,6 +194,7 @@ spec = do
                             let (sresp, _) =
                                     evalD $
                                     processSyncWith
+                                        @(UUID Double)
                                         @Double
                                         genD
                                         synct
@@ -194,6 +217,7 @@ spec = do
                             let (sresp, _) =
                                     evalD $
                                     processSyncWith
+                                        @(UUID Double)
                                         @Double
                                         genD
                                         synct
@@ -215,7 +239,13 @@ spec = do
                     forAllValid $ \sreq -> do
                         let (sresp, _) =
                                 evalD $
-                                processSyncWith @Double genD synct cs sreq
+                                processSyncWith
+                                    @(UUID Double)
+                                    @Double
+                                    genD
+                                    synct
+                                    cs
+                                    sreq
                         S.map syncedUuid (syncResponseNewRemoteItems sresp) `shouldBe`
                             S.difference
                                 (S.difference
@@ -224,14 +254,18 @@ spec = do
                                 (syncRequestSyncedItems sreq)
         it "produces valid results when using determinisitic UUIDs" $
             producesValidsOnValids3 $ \synct cs sr ->
-                evalD $ processSyncWith @Double genD synct cs sr
+                evalD $ processSyncWith @(UUID Double) @Double genD synct cs sr
         it "makes syncing idempotent with deterministic UUIDs" $
             forAllValid $ \synct1 ->
                 forAll (genValid `suchThat` (>= synct1)) $ \synct2 ->
                     forAllValid $ \central1 ->
                         forAllValid $ \local1 -> do
                             let d1 = mkStdGen 42
-                            let sreq1 = makeSyncRequest @Double local1
+                            let sreq1 =
+                                    makeSyncRequest
+                                        @(UUID Double)
+                                        @Double
+                                        local1
                             let ((sresp1, central2), d2) =
                                     runD
                                         (processSyncWith
@@ -258,7 +292,11 @@ spec = do
                 forAll (genValid `suchThat` (>= synct1)) $ \synct2 ->
                     forAllValid $ \central1 ->
                         forAllValid $ \local1 -> do
-                            let sreq1 = makeSyncRequest @Double local1
+                            let sreq1 =
+                                    makeSyncRequest
+                                        @(UUID Double)
+                                        @Double
+                                        local1
                             (sresp1, central2) <-
                                 processSyncWith
                                     nextRandomUUID
@@ -280,11 +318,11 @@ spec = do
         it "makes syncing idempotent" $
         forAllValid $ \central1 ->
             forAllValid $ \local1 -> do
-                let sreq1 = makeSyncRequest @Double local1
-                (sresp1, central2) <- processSync central1 sreq1
+                let sreq1 = makeSyncRequest @(UUID Double) @Double local1
+                (sresp1, central2) <- processSync nextRandomUUID central1 sreq1
                 let local2 = mergeSyncResponse local1 sresp1
                 let sreq2 = makeSyncRequest local2
-                (sresp2, central3) <- processSync central2 sreq2
+                (sresp2, central3) <- processSync nextRandomUUID central2 sreq2
                 let local3 = mergeSyncResponse local2 sresp2
                 local2 `shouldBe` local3
                 central2 `shouldBe` central3

@@ -21,7 +21,6 @@ library:
     - containers
     - mtl
     - time
-    - typed-uuid
     - validity
     - validity-containers
     - validity-time

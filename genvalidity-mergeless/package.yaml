@@ -21,7 +21,6 @@ library:
     - genvalidity
     - genvalidity-containers
     - genvalidity-time
-    - genvalidity-typed-uuid
     - mergeless
 
 tests:
@@ -37,6 +36,7 @@ tests:
       - base >= 4.7 && < 5
       - containers
       - genvalidity-hspec
+      - genvalidity-typed-uuid
       - genvalidity-hspec-aeson
       - genvalidity-mergeless
       - hspec

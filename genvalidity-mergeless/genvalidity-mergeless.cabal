@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 5917462e4686430a86f18bf0368c0abbf659a84816f9967e42c4ce9f9611485d
+-- hash: ee6764c4ce0cc2519179cf65349074479a0f50c58892ef89f77c55d965547c37
 
 name:           genvalidity-mergeless
 version:        0.0.0.0
@@ -36,7 +36,6 @@ library
     , genvalidity
     , genvalidity-containers
     , genvalidity-time
-    , genvalidity-typed-uuid
     , mergeless
   default-language: Haskell2010
 
@@ -56,6 +55,7 @@ test-suite genvalidity-mergeless-test
     , genvalidity-hspec
     , genvalidity-hspec-aeson
     , genvalidity-mergeless
+    , genvalidity-typed-uuid
     , hspec
     , mergeless
     , mtl

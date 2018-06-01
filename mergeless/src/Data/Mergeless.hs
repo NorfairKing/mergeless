@@ -32,17 +32,16 @@ import Data.Maybe
 import qualified Data.Set as S
 import Data.Set (Set)
 import Data.Time
-import Data.UUID.Typed
 import Data.Validity
 import Data.Validity.Containers ()
 import Data.Validity.Time ()
 import GHC.Generics (Generic)
 
-newtype Store a = Store
-    { storeItems :: Set (StoreItem a)
-    } deriving (Show, Eq, Ord, Generic)
+newtype Store i a = Store
+    { storeItems :: Set (StoreItem i a)
+    } deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
-instance (Validity a, Ord a) => Validity (Store a) where
+instance (Validity i, Validity a, Ord i, Ord a) => Validity (Store i a) where
     validate Store {..} =
         mconcat
             [ annotate storeItems "storeItems"
@@ -54,26 +53,20 @@ instance (Validity a, Ord a) => Validity (Store a) where
                   UndeletedItem u -> Just u
             ]
 
-instance (FromJSON a, Ord a) => FromJSON (Store a) where
-    parseJSON v = Store <$> parseJSON v
-
-instance ToJSON a => ToJSON (Store a) where
-    toJSON (Store s) = toJSON s
-
-data StoreItem a
+data StoreItem i a
     = UnsyncedItem !(Added a)
-    | SyncedItem !(Synced a)
-    | UndeletedItem !(UUID a)
+    | SyncedItem !(Synced i a)
+    | UndeletedItem i
     deriving (Show, Eq, Ord, Generic)
 
-instance Validity a => Validity (StoreItem a)
+instance (Validity i, Validity a) => Validity (StoreItem i a)
 
-instance FromJSON a => FromJSON (StoreItem a) where
+instance (FromJSON i, FromJSON a) => FromJSON (StoreItem i a) where
     parseJSON v =
         (SyncedItem <$> parseJSON v) <|> (UnsyncedItem <$> parseJSON v) <|>
         (UndeletedItem <$> parseJSON v)
 
-instance ToJSON a => ToJSON (StoreItem a) where
+instance (ToJSON i, ToJSON a) => ToJSON (StoreItem i a) where
     toJSON (UnsyncedItem a) = toJSON a
     toJSON (SyncedItem a) = toJSON a
     toJSON (UndeletedItem a) = toJSON a
@@ -92,55 +85,57 @@ instance FromJSON a => FromJSON (Added a) where
 instance ToJSON a => ToJSON (Added a) where
     toJSON Added {..} = object ["value" .= addedValue, "added" .= addedCreated]
 
-data Synced a = Synced
-    { syncedUuid :: !(UUID a)
+data Synced i a = Synced
+    { syncedUuid :: i
     , syncedValue :: !a
     , syncedCreated :: !UTCTime
     , syncedSynced :: !UTCTime
     } deriving (Show, Eq, Ord, Generic)
 
-instance Validity a => Validity (Synced a)
+instance (Validity i, Validity a) => Validity (Synced i a)
 
-instance FromJSON a => FromJSON (Synced a) where
+instance (FromJSON i, FromJSON a) => FromJSON (Synced i a) where
     parseJSON =
         withObject "Synced" $ \o ->
-            Synced <$> o .: "uuid" <*> o .: "value" <*> o .: "created" <*>
+            Synced <$> o .: "id" <*> o .: "value" <*> o .: "created" <*>
             o .: "synced"
 
-instance ToJSON a => ToJSON (Synced a) where
+instance (ToJSON i, ToJSON a) => ToJSON (Synced i a) where
     toJSON Synced {..} =
         object
-            [ "uuid" .= syncedUuid
+            [ "id" .= syncedUuid
             , "value" .= syncedValue
             , "created" .= syncedCreated
             , "synced" .= syncedSynced
             ]
 
-data SyncRequest a = SyncRequest
+data SyncRequest i a = SyncRequest
     { syncRequestAddedItems :: !(Set (Added a))
-    , syncRequestSyncedItems :: !(Set (UUID a))
-    , syncRequestUndeletedItems :: !(Set (UUID a))
+    , syncRequestSyncedItems :: !(Set i)
+    , syncRequestUndeletedItems :: !(Set i)
     } deriving (Show, Eq, Ord, Generic)
 
-instance (Validity a, Ord a) => Validity (SyncRequest a) where
+instance (Validity i, Validity a, Ord i, Ord a) =>
+         Validity (SyncRequest i a) where
     validate SyncRequest {..} =
         mconcat
             [ annotate syncRequestAddedItems "syncRequestAddedItems"
             , annotate syncRequestSyncedItems "syncRequestSyncedItems"
             , annotate syncRequestUndeletedItems "syncRequestUndeletedItems"
-            , declare "the sync request items have distinct uuids" $
+            , declare "the sync request items have distinct ids" $
               distinct $
               S.toList syncRequestSyncedItems ++
               S.toList syncRequestUndeletedItems
             ]
 
-instance (FromJSON a, Ord a) => FromJSON (SyncRequest a) where
+instance (FromJSON i, FromJSON a, Ord i, Ord a) =>
+         FromJSON (SyncRequest i a) where
     parseJSON =
         withObject "SyncRequest" $ \o ->
             SyncRequest <$> o .: "unsynced" <*> o .: "synced" <*>
             o .: "undeleted"
 
-instance ToJSON a => ToJSON (SyncRequest a) where
+instance (ToJSON i, ToJSON a) => ToJSON (SyncRequest i a) where
     toJSON SyncRequest {..} =
         object
             [ "unsynced" .= syncRequestAddedItems
@@ -148,13 +143,14 @@ instance ToJSON a => ToJSON (SyncRequest a) where
             , "undeleted" .= syncRequestUndeletedItems
             ]
 
-data SyncResponse a = SyncResponse
-    { syncResponseAddedItems :: !(Set (Synced a))
-    , syncResponseNewRemoteItems :: !(Set (Synced a))
-    , syncResponseItemsToBeDeletedLocally :: !(Set (UUID a))
+data SyncResponse i a = SyncResponse
+    { syncResponseAddedItems :: !(Set (Synced i a))
+    , syncResponseNewRemoteItems :: !(Set (Synced i a))
+    , syncResponseItemsToBeDeletedLocally :: !(Set i)
     } deriving (Show, Eq, Ord, Generic)
 
-instance (Validity a, Ord a) => Validity (SyncResponse a) where
+instance (Validity i, Validity a, Ord i, Ord a) =>
+         Validity (SyncResponse i a) where
     validate SyncResponse {..} =
         mconcat
             [ annotate syncResponseAddedItems "syncResponseAddedItems"
@@ -171,12 +167,13 @@ instance (Validity a, Ord a) => Validity (SyncResponse a) where
               S.toList syncResponseItemsToBeDeletedLocally
             ]
 
-instance (FromJSON a, Ord a) => FromJSON (SyncResponse a) where
+instance (FromJSON i, FromJSON a, Ord i, Ord a) =>
+         FromJSON (SyncResponse i a) where
     parseJSON =
         withObject "SyncResponse" $ \o ->
             SyncResponse <$> o .: "added" <*> o .: "new" <*> o .: "deleted"
 
-instance ToJSON a => ToJSON (SyncResponse a) where
+instance (ToJSON i, ToJSON a) => ToJSON (SyncResponse i a) where
     toJSON SyncResponse {..} =
         object
             [ "added" .= syncResponseAddedItems
@@ -184,7 +181,7 @@ instance ToJSON a => ToJSON (SyncResponse a) where
             , "deleted" .= syncResponseItemsToBeDeletedLocally
             ]
 
-makeSyncRequest :: Ord a => Store a -> SyncRequest a
+makeSyncRequest :: (Ord i, Ord a) => Store i a -> SyncRequest i a
 makeSyncRequest Store {..} =
     SyncRequest
     { syncRequestAddedItems =
@@ -201,7 +198,8 @@ makeSyncRequest Store {..} =
               _ -> Nothing
     }
 
-mergeSyncResponse :: Ord a => Store a -> SyncResponse a -> Store a
+mergeSyncResponse ::
+       (Ord i, Ord a) => Store i a -> SyncResponse i a -> Store i a
 mergeSyncResponse s SyncResponse {..} =
     let withNewOwnItems =
             flip mapSetMaybe (storeItems s) $ \si ->
@@ -253,31 +251,33 @@ instance FromJSON a => FromJSON (CentralItem a)
 
 instance ToJSON a => ToJSON (CentralItem a)
 
-newtype CentralStore a = CentralStore
-    { centralStoreItems :: Map (UUID a) (CentralItem a)
+newtype CentralStore i a = CentralStore
+    { centralStoreItems :: Map i (CentralItem a)
     } deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
-instance (Validity a, Ord a) => Validity (CentralStore a)
+instance (Validity i, Validity a, Ord i, Ord a) =>
+         Validity (CentralStore i a)
 
 processSync ::
-       (Ord a, MonadIO m)
-    => CentralStore a
-    -> SyncRequest a
-    -> m (SyncResponse a, CentralStore a)
-processSync cs sr = do
+       (Ord i, Ord a, MonadIO m)
+    => m i
+    -> CentralStore i a
+    -> SyncRequest i a
+    -> m (SyncResponse i a, CentralStore i a)
+processSync genId cs sr = do
     now <- liftIO getCurrentTime
-    processSyncWith nextRandomUUID now cs sr
+    processSyncWith genId now cs sr
 
 -- | A process a sync request with a custom UUID generation function
 --
 -- Use this function if you want to process sync requests purely with a pseudorandom generator
 processSyncWith ::
-       forall a m. (Ord a, Monad m)
-    => m (UUID a)
+       forall i a m. (Ord i, Ord a, Monad m)
+    => m i
     -> UTCTime
-    -> CentralStore a
-    -> SyncRequest a
-    -> m (SyncResponse a, CentralStore a)
+    -> CentralStore i a
+    -> SyncRequest i a
+    -> m (SyncResponse i a, CentralStore i a)
 processSyncWith genUuid now cs SyncRequest {..} =
     flip runStateT cs $ do
         deleteUndeleted
@@ -295,15 +295,15 @@ processSyncWith genUuid now cs SyncRequest {..} =
             , syncResponseItemsToBeDeletedLocally = deletedRemotely
             }
   where
-    deleteUndeleted :: StateT (CentralStore a) m ()
+    deleteUndeleted :: StateT (CentralStore i a) m ()
     deleteUndeleted = deleteMany syncRequestUndeletedItems
-    deleteMany :: Set (UUID a) -> StateT (CentralStore a) m ()
+    deleteMany :: Set i -> StateT (CentralStore i a) m ()
     deleteMany s = modC (`M.withoutKeys` s)
-    syncItemsToBeDeletedLocally :: StateT (CentralStore a) m (Set (UUID a))
+    syncItemsToBeDeletedLocally :: StateT (CentralStore i a) m (Set i)
     syncItemsToBeDeletedLocally = do
         foundItems <- query (`M.restrictKeys` syncRequestSyncedItems)
         pure $ syncRequestSyncedItems `S.difference` M.keysSet foundItems
-    syncNewRemoteItems :: StateT (CentralStore a) m (Set (Synced a))
+    syncNewRemoteItems :: StateT (CentralStore i a) m (Set (Synced i a))
     syncNewRemoteItems = do
         syncedValues <- query (`M.withoutKeys` syncRequestSyncedItems)
         pure $
@@ -315,9 +315,9 @@ processSyncWith genUuid now cs SyncRequest {..} =
                 , syncedCreated = centralCreated
                 , syncedSynced = centralSynced
                 }
-    query :: (Map (UUID a) (CentralItem a) -> b) -> StateT (CentralStore a) m b
+    query :: (Map i (CentralItem a) -> b) -> StateT (CentralStore i a) m b
     query func = gets $ func . centralStoreItems
-    syncAddedItems :: StateT (CentralStore a) m (Set (Synced a))
+    syncAddedItems :: StateT (CentralStore i a) m (Set (Synced i a))
     syncAddedItems =
         fmap S.fromList $
         forM (S.toList syncRequestAddedItems) $ \Added {..} -> do
@@ -336,11 +336,11 @@ processSyncWith genUuid now cs SyncRequest {..} =
                 , syncedSynced = now
                 , syncedValue = addedValue
                 }
-    ins :: UUID a -> CentralItem a -> StateT (CentralStore a) m ()
-    ins uuid val = modC $ M.insert uuid val
+    ins :: i -> CentralItem a -> StateT (CentralStore i a) m ()
+    ins i val = modC $ M.insert i val
     modC ::
-           (Map (UUID a) (CentralItem a) -> Map (UUID a) (CentralItem a))
-        -> StateT (CentralStore a) m ()
+           (Map i (CentralItem a) -> Map i (CentralItem a))
+        -> StateT (CentralStore i a) m ()
     modC func = modify (\(CentralStore m) -> CentralStore $ func m)
 
 mapSetMaybe :: Ord b => (a -> Maybe b) -> Set a -> Set b
