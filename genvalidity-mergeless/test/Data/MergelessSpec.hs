@@ -252,9 +252,40 @@ spec = do
                                      (M.keysSet $ centralStoreItems cs)
                                      (syncRequestUndeletedItems sreq))
                                 (syncRequestSyncedItems sreq)
+        it "produces valid results when using incrementing words" $
+            producesValidsOnValids3 $ \synct cs sr ->
+                evalI $ processSyncWith @Word @Double genI synct cs sr
         it "produces valid results when using determinisitic UUIDs" $
             producesValidsOnValids3 $ \synct cs sr ->
                 evalD $ processSyncWith @(UUID Double) @Double genD synct cs sr
+        it "makes syncing idempotent with incrementing words" $
+            forAllValid $ \synct1 ->
+                forAll (genValid `suchThat` (>= synct1)) $ \synct2 ->
+                    forAllValid $ \central1 ->
+                        forAllValid $ \local1 -> do
+                            let d1 = 0
+                            let sreq1 = makeSyncRequest @Word @Double local1
+                            let ((sresp1, central2), d2) =
+                                    runI
+                                        (processSyncWith
+                                             genI
+                                             synct1
+                                             central1
+                                             sreq1)
+                                        d1
+                            let local2 = mergeSyncResponse local1 sresp1
+                            let sreq2 = makeSyncRequest local2
+                            let ((sresp2, central3), _) =
+                                    runI
+                                        (processSyncWith
+                                             genI
+                                             synct2
+                                             central2
+                                             sreq2)
+                                        d2
+                            let local3 = mergeSyncResponse local2 sresp2
+                            local2 `shouldBe` local3
+                            central2 `shouldBe` central3
         it "makes syncing idempotent with deterministic UUIDs" $
             forAllValid $ \synct1 ->
                 forAll (genValid `suchThat` (>= synct1)) $ \synct2 ->
@@ -315,7 +346,7 @@ spec = do
                             local2 `shouldBe` local3
                             central2 `shouldBe` central3
     describe "processSync" $
-        it "makes syncing idempotent" $
+        it "makes syncing idempotent when using random UUIDs" $
         forAllValid $ \central1 ->
             forAllValid $ \local1 -> do
                 let sreq1 = makeSyncRequest @(UUID Double) @Double local1
@@ -343,3 +374,19 @@ genD = do
     let (u, r') = random r
     put r'
     pure u
+
+newtype I a = I
+    { unI :: State Word a
+    } deriving (Generic, Functor, Applicative, Monad, MonadState Word)
+
+evalI :: I a -> a
+evalI i = fst $ runI i 0
+
+runI :: I a -> Word -> (a, Word)
+runI = runState . unI
+
+genI :: I Word
+genI = do
+    i <- get
+    modify succ
+    pure i
