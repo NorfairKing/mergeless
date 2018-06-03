@@ -48,13 +48,19 @@ module Data.Mergeless
     , Added(..)
     , Synced(..)
     , SyncRequest(..)
-    , makeSyncRequest
     , SyncResponse(..)
+    -- * Client-side Synchronisation
+    , makeSyncRequest
     , mergeSyncResponse
+    -- * Server-side Synchronisation
+    -- ** General synchronisation
+    , SyncProcessor(..)
+    , processSyncCustom
+    -- ** Synchronisation with a simple central store
     , CentralStore(..)
     , CentralItem(..)
-    , processSync
     , processSyncWith
+    , processSync
     ) where
 
 import Control.Applicative
@@ -285,6 +291,66 @@ mergeSyncResponse s SyncResponse {..} =
              withNewOwnItems
        }
 
+-- | A record of the basic operations that are necessary to build a synchronisation processor.
+data SyncProcessor i a m = SyncProcessor
+    { syncProcessorDeleteMany :: Set i -> m () -- ^ Delete the items with an identifier in the given set.
+    , syncProcessorQuerySynced :: Set i -> m (Set i) -- ^ Query the identifiers of the items that are in store, of the given set.
+    , syncProcessorQueryNewRemote :: Set i -> m (Set (Synced i a)) -- ^ Query the items that are in store, but not in the given set.
+    , syncProcessorInsertMany :: Set (Synced i a) -> m () -- ^ Insert a set of items into the stor.
+    } deriving (Generic)
+
+-- | Process a server-side synchronisation request using a custom synchronisation processor
+--
+-- WARNING: The identifier generation function must produce newly unique identifiers such that each new item gets a unique identifier.
+--
+-- You can use this function with deterministically-random identifiers or incrementing identifiers.
+processSyncCustom ::
+       forall i a m. (Ord i, Ord a, Monad m)
+    => m i
+    -> UTCTime
+    -> SyncProcessor i a m
+    -> SyncRequest i a
+    -> m (SyncResponse i a)
+processSyncCustom genUuid now SyncProcessor {..} SyncRequest {..} = do
+    deleteUndeleted
+        -- First we delete the items that were deleted locally but not yet remotely.
+        -- Then we find the items that have been deleted remotely but not locally
+    deletedRemotely <- syncItemsToBeDeletedLocally
+        -- Then we find the items that have appeared remotely but aren't known locally
+    newRemoteItems <- syncNewRemoteItems
+        -- Then we add the items that should be added.
+    newLocalItems <- syncAddedItems
+    pure
+        SyncResponse
+        { syncResponseNewRemoteItems = newRemoteItems
+        , syncResponseAddedItems = newLocalItems
+        , syncResponseItemsToBeDeletedLocally = deletedRemotely
+        }
+  where
+    deleteUndeleted :: m ()
+    deleteUndeleted = syncProcessorDeleteMany syncRequestUndeletedItems
+    syncItemsToBeDeletedLocally :: m (Set i)
+    syncItemsToBeDeletedLocally = do
+        foundItems <- syncProcessorQuerySynced syncRequestSyncedItems
+        pure $ syncRequestSyncedItems `S.difference` foundItems
+    syncNewRemoteItems :: m (Set (Synced i a))
+    syncNewRemoteItems = syncProcessorQueryNewRemote syncRequestSyncedItems
+    syncAddedItems :: m (Set (Synced i a))
+    syncAddedItems = do
+        is <-
+            fmap S.fromList $
+            forM (S.toList syncRequestAddedItems) $ \Added {..} -> do
+                uuid <- genUuid
+                pure
+                    Synced
+                    { syncedUuid = uuid
+                    , syncedCreated = addedCreated
+                    , syncedSynced = now
+                    , syncedValue = addedValue
+                    }
+        syncProcessorInsertMany is
+        pure is
+
 -- | An item in a central store with a value of type @a@
 data CentralItem a = CentralItem
     { centralValue :: !a
@@ -307,6 +373,8 @@ instance (Validity i, Validity a, Ord i, Ord a) =>
          Validity (CentralStore i a)
 
 -- | Process a server-side synchronisation request using @getCurrentTime@
+--
+-- see 'processSyncCustom'
 processSync ::
        (Ord i, Ord a, MonadIO m)
     => m i
@@ -319,9 +387,7 @@ processSync genId cs sr = do
 
 -- | Process a server-side synchronisation request using a time of syncing, and an identifier generation function.
 --
--- WARNING: The identifier generation function must produce newly unique identifiers such that each new item gets a unique identifier.
---
--- You can use this function with deterministically-random identifiers or incrementing identifiers.
+-- see 'processSyncCustom'
 processSyncWith ::
        forall i a m. (Ord i, Ord a, Monad m)
     => m i
@@ -329,63 +395,46 @@ processSyncWith ::
     -> CentralStore i a
     -> SyncRequest i a
     -> m (SyncResponse i a, CentralStore i a)
-processSyncWith genUuid now cs SyncRequest {..} =
-    flip runStateT cs $ do
-        deleteUndeleted
-        -- First we delete the items that were deleted locally but not yet remotely.
-        -- Then we find the items that have been deleted remotely but not locally
-        deletedRemotely <- syncItemsToBeDeletedLocally
-        -- Then we find the items that have appeared remotely but aren't known locally
-        newRemoteItems <- syncNewRemoteItems
-        -- Then we add the items that should be added.
-        newLocalItems <- syncAddedItems
-        pure
-            SyncResponse
-            { syncResponseNewRemoteItems = newRemoteItems
-            , syncResponseAddedItems = newLocalItems
-            , syncResponseItemsToBeDeletedLocally = deletedRemotely
-            }
+processSyncWith genUuid now cs sr =
+    flip runStateT cs $
+    processSyncCustom
+        (lift genUuid)
+        now
+        SyncProcessor
+        { syncProcessorDeleteMany = deleteMany
+        , syncProcessorQuerySynced = querySynced
+        , syncProcessorQueryNewRemote = queryNewRemote
+        , syncProcessorInsertMany = insertMany
+        }
+        sr
   where
-    deleteUndeleted :: StateT (CentralStore i a) m ()
-    deleteUndeleted = deleteMany syncRequestUndeletedItems
     deleteMany :: Set i -> StateT (CentralStore i a) m ()
     deleteMany s = modC (`M.withoutKeys` s)
-    syncItemsToBeDeletedLocally :: StateT (CentralStore i a) m (Set i)
-    syncItemsToBeDeletedLocally = do
-        foundItems <- query (`M.restrictKeys` syncRequestSyncedItems)
-        pure $ syncRequestSyncedItems `S.difference` M.keysSet foundItems
-    syncNewRemoteItems :: StateT (CentralStore i a) m (Set (Synced i a))
-    syncNewRemoteItems = do
-        syncedValues <- query (`M.withoutKeys` syncRequestSyncedItems)
+    querySynced :: Set i -> StateT (CentralStore i a) m (Set i)
+    querySynced s = M.keysSet <$> query (`M.restrictKeys` s)
+    queryNewRemote :: Set i -> StateT (CentralStore i a) m (Set (Synced i a))
+    queryNewRemote s = do
+        m <- query (`M.withoutKeys` s)
         pure $
             S.fromList $
-            flip map (M.toList syncedValues) $ \(u, CentralItem {..}) ->
+            flip map (M.toList m) $ \(i, CentralItem {..}) ->
                 Synced
-                { syncedUuid = u
-                , syncedValue = centralValue
+                { syncedUuid = i
                 , syncedCreated = centralCreated
                 , syncedSynced = centralSynced
+                , syncedValue = centralValue
                 }
     query :: (Map i (CentralItem a) -> b) -> StateT (CentralStore i a) m b
     query func = gets $ func . centralStoreItems
-    syncAddedItems :: StateT (CentralStore i a) m (Set (Synced i a))
-    syncAddedItems =
-        fmap S.fromList $
-        forM (S.toList syncRequestAddedItems) $ \Added {..} -> do
-            uuid <- lift genUuid
+    insertMany :: Set (Synced i a) -> StateT (CentralStore i a) m ()
+    insertMany s =
+        forM_ (S.toList s) $ \Synced {..} ->
             ins
-                uuid
+                syncedUuid
                 CentralItem
-                { centralValue = addedValue
-                , centralCreated = addedCreated
-                , centralSynced = now
-                }
-            pure
-                Synced
-                { syncedUuid = uuid
-                , syncedCreated = addedCreated
-                , syncedSynced = now
-                , syncedValue = addedValue
+                { centralValue = syncedValue
+                , centralCreated = syncedCreated
+                , centralSynced = syncedSynced
                 }
     ins :: i -> CentralItem a -> StateT (CentralStore i a) m ()
     ins i val = modC $ M.insert i val
