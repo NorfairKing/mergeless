@@ -43,10 +43,13 @@
 -- * The client sends that request to the central server and gets a 'SyncResponse'.
 -- * The client then updates its local store with 'mergeSyncResponse'.
 module Data.Mergeless
-    ( Store(..)
-    , StoreItem(..)
-    , Added(..)
+    ( Added(..)
     , Synced(..)
+    , StoreItem(..)
+    , Store(..)
+    , emptyStore
+    , storeSize
+    , addItemToStore
     , SyncRequest(..)
     , SyncResponse(..)
     -- * Client-side Synchronisation
@@ -78,42 +81,6 @@ import Data.Validity
 import Data.Validity.Containers ()
 import Data.Validity.Time ()
 import GHC.Generics (Generic)
-
--- | A client-side store of items with Id's of type @i@ and values of type @a@
-newtype Store i a = Store
-    { storeItems :: Set (StoreItem i a)
-    } deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
-
-instance (Validity i, Validity a, Ord i, Ord a) => Validity (Store i a) where
-    validate Store {..} =
-        mconcat
-            [ annotate storeItems "storeItems"
-            , declare "the store items have distinct uuids" $
-              distinct $
-              flip mapMaybe (S.toList storeItems) $ \case
-                  UnsyncedItem _ -> Nothing
-                  SyncedItem Synced {..} -> Just syncedUuid
-                  UndeletedItem u -> Just u
-            ]
-
--- | A store item with an Id of type @i@ and a value of type @a@
-data StoreItem i a
-    = UnsyncedItem !(Added a) -- ^ A local item that has not been synchronised to the central store yet
-    | SyncedItem !(Synced i a) -- ^ A local item that has been synchronised to the central store already
-    | UndeletedItem i -- ^ An item that has been synchronised to the central store, was subsequently deleted locally but this deletion has not been synchronised to the central store yet.
-    deriving (Show, Eq, Ord, Generic)
-
-instance (Validity i, Validity a) => Validity (StoreItem i a)
-
-instance (FromJSON i, FromJSON a) => FromJSON (StoreItem i a) where
-    parseJSON v =
-        (SyncedItem <$> parseJSON v) <|> (UnsyncedItem <$> parseJSON v) <|>
-        (UndeletedItem <$> parseJSON v)
-
-instance (ToJSON i, ToJSON a) => ToJSON (StoreItem i a) where
-    toJSON (UnsyncedItem a) = toJSON a
-    toJSON (SyncedItem a) = toJSON a
-    toJSON (UndeletedItem a) = toJSON a
 
 -- | A local item of type @a@ that has been added but not synchronised yet
 data Added a = Added
@@ -154,6 +121,54 @@ instance (ToJSON i, ToJSON a) => ToJSON (Synced i a) where
             , "created" .= syncedCreated
             , "synced" .= syncedSynced
             ]
+
+-- | A store item with an Id of type @i@ and a value of type @a@
+data StoreItem i a
+    = UnsyncedItem !(Added a) -- ^ A local item that has not been synchronised to the central store yet
+    | SyncedItem !(Synced i a) -- ^ A local item that has been synchronised to the central store already
+    | UndeletedItem i -- ^ An item that has been synchronised to the central store, was subsequently deleted locally but this deletion has not been synchronised to the central store yet.
+    deriving (Show, Eq, Ord, Generic)
+
+instance (Validity i, Validity a) => Validity (StoreItem i a)
+
+instance (FromJSON i, FromJSON a) => FromJSON (StoreItem i a) where
+    parseJSON v =
+        (SyncedItem <$> parseJSON v) <|> (UnsyncedItem <$> parseJSON v) <|>
+        (UndeletedItem <$> parseJSON v)
+
+instance (ToJSON i, ToJSON a) => ToJSON (StoreItem i a) where
+    toJSON (UnsyncedItem a) = toJSON a
+    toJSON (SyncedItem a) = toJSON a
+    toJSON (UndeletedItem a) = toJSON a
+
+-- | A client-side store of items with Id's of type @i@ and values of type @a@
+newtype Store i a = Store
+    { storeItems :: Set (StoreItem i a)
+    } deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
+
+instance (Validity i, Validity a, Ord i, Ord a) => Validity (Store i a) where
+    validate Store {..} =
+        mconcat
+            [ annotate storeItems "storeItems"
+            , declare "the store items have distinct uuids" $
+              distinct $
+              flip mapMaybe (S.toList storeItems) $ \case
+                  UnsyncedItem _ -> Nothing
+                  SyncedItem Synced {..} -> Just syncedUuid
+                  UndeletedItem u -> Just u
+            ]
+
+-- | The store with no items.
+emptyStore :: Store i a
+emptyStore = Store S.empty
+
+-- | The number of items in a store
+storeSize :: Store i a -> Int
+storeSize (Store s) = S.size s
+
+-- | Add a new (unsynced) item to the store
+addItemToStore :: (Ord i, Ord a) => Added a -> Store i a -> Store i a
+addItemToStore a (Store s) = Store $ S.insert (UnsyncedItem a) s
 
 -- | A synchronisation request for items with identifiers of type @i@ and values of type @a@
 data SyncRequest i a = SyncRequest
