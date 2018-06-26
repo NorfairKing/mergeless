@@ -61,6 +61,40 @@ spec = do
     ordSpecOnValid @(CentralStore Double Double)
     genValiditySpec @(CentralStore Double Double)
     jsonSpecOnValid @(CentralStore Double Double)
+    describe "emptyStore" $
+        it "is valid" $ shouldBeValid (emptyStore @Double @Double)
+    describe "storeSize" $
+        it "does not crash" $ producesValidsOnValids (storeSize @Double @Double)
+    describe "addItemToStore" $
+        it "produces valid stores" $
+        producesValidsOnValids2 (addItemToStore @Double @Double)
+    describe "deleteUnsynced" $
+        it "produces valid stores" $
+        producesValidsOnValids2 (deleteUnsynced @Double @Double)
+    describe "deleteSynced" $
+        it "produces valid stores" $
+        producesValidsOnValids2 (deleteSynced @Double @Double)
+    describe "storeSize" $ do
+        specify
+            "deleting an unsynced item after adding it leaves the store with the original size" $
+            forAllValid $ \store ->
+                forAllValid $ \added ->
+                    let size1 = storeSize (store :: Store Double Double)
+                        store' = addItemToStore added store
+                        store'' = deleteUnsynced added store'
+                        size2 = storeSize store''
+                    in size2 `shouldBe` size1
+        specify
+            "deleting a synced item after adding it leaves the store with the original size" $
+            forAllValid $ \store ->
+                forAllValid $ \synced ->
+                    let size1 = storeSize (store :: Store Double Double)
+                        store' =
+                            Store $
+                            S.insert (SyncedItem synced) $ storeItems store
+                        store'' = deleteSynced synced store'
+                        size2 = storeSize store''
+                    in size2 `shouldBe` size1
     describe "makeSyncRequest" $
         it "produces valid sync requests" $
         producesValidsOnValids (makeSyncRequest @Double @Double)
@@ -124,10 +158,10 @@ spec = do
                                     synct
                                     cs
                                     SyncRequest
-                                    { syncRequestAddedItems = S.singleton ai
-                                    , syncRequestSyncedItems = S.empty
-                                    , syncRequestUndeletedItems = S.empty
-                                    }
+                                        { syncRequestAddedItems = S.singleton ai
+                                        , syncRequestSyncedItems = S.empty
+                                        , syncRequestUndeletedItems = S.empty
+                                        }
                         S.map syncedValue (syncResponseAddedItems sresp) `shouldBe`
                             S.singleton (addedValue ai)
         it "adds the items that were added" $
@@ -161,10 +195,10 @@ spec = do
                                 synct
                                 (CentralStore $ M.singleton uuid ci)
                                 SyncRequest
-                                { syncRequestAddedItems = S.empty
-                                , syncRequestSyncedItems = S.empty
-                                , syncRequestUndeletedItems = S.empty
-                                }
+                                    { syncRequestAddedItems = S.empty
+                                    , syncRequestSyncedItems = S.empty
+                                    , syncRequestUndeletedItems = S.empty
+                                    }
                     S.map syncedValue (syncResponseNewRemoteItems sresp) `shouldBe`
                         S.singleton (centralValue ci)
         it
@@ -181,10 +215,10 @@ spec = do
                                     synct
                                     cs
                                     SyncRequest
-                                    { syncRequestAddedItems = S.empty
-                                    , syncRequestSyncedItems = sis
-                                    , syncRequestUndeletedItems = S.empty
-                                    }
+                                        { syncRequestAddedItems = S.empty
+                                        , syncRequestSyncedItems = sis
+                                        , syncRequestUndeletedItems = S.empty
+                                        }
                         S.map syncedUuid (syncResponseNewRemoteItems sresp) `shouldBe`
                             S.difference (M.keysSet $ centralStoreItems cs) sis
         it "returns all remotely added items when no items are locally deleted " $
@@ -201,10 +235,11 @@ spec = do
                                         synct
                                         cs
                                         SyncRequest
-                                        { syncRequestAddedItems = ais
-                                        , syncRequestSyncedItems = sis
-                                        , syncRequestUndeletedItems = S.empty
-                                        }
+                                            { syncRequestAddedItems = ais
+                                            , syncRequestSyncedItems = sis
+                                            , syncRequestUndeletedItems =
+                                                  S.empty
+                                            }
                             S.map syncedUuid (syncResponseNewRemoteItems sresp) `shouldBe`
                                 S.difference
                                     (M.keysSet $ centralStoreItems cs)
@@ -224,10 +259,10 @@ spec = do
                                         synct
                                         cs
                                         SyncRequest
-                                        { syncRequestAddedItems = S.empty
-                                        , syncRequestSyncedItems = sis
-                                        , syncRequestUndeletedItems = dis
-                                        }
+                                            { syncRequestAddedItems = S.empty
+                                            , syncRequestSyncedItems = sis
+                                            , syncRequestUndeletedItems = dis
+                                            }
                             S.map syncedUuid (syncResponseNewRemoteItems sresp) `shouldBe`
                                 S.difference
                                     (S.difference
