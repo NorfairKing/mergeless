@@ -83,7 +83,7 @@ spec = do
                         store' = addItemToStore added store
                         store'' = deleteUnsynced added store'
                         size2 = storeSize store''
-                    in size2 `shouldBe` size1
+                     in size2 `shouldBe` size1
         specify
             "deleting a synced item after adding it leaves the store with the original size" $
             forAllValid $ \store ->
@@ -94,7 +94,7 @@ spec = do
                             S.insert (SyncedItem synced) $ storeItems store
                         store'' = deleteSynced synced store'
                         size2 = storeSize store''
-                    in size2 `shouldBe` size1
+                     in size2 `shouldBe` size1
     describe "makeSyncRequest" $
         it "produces valid sync requests" $
         producesValidsOnValids (makeSyncRequest @Double @Double)

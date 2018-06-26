@@ -84,6 +84,8 @@ import Data.Validity.Containers ()
 import Data.Validity.Time ()
 import GHC.Generics (Generic)
 
+{-# ANN module ("HLint: ignore Use lambda-case" :: String) #-}
+
 -- | A local item of type @a@ that has been added but not synchronised yet
 data Added a = Added
     { addedValue :: !a
@@ -166,15 +168,20 @@ emptyStore = Store S.empty
 
 -- | The number of items in a store
 storeSize :: Store i a -> Int
-storeSize (Store s) = S.size $ S.filter (\si -> case si of
-    UndeletedItem _ -> False
-    _ -> True) s
+storeSize (Store s) =
+    S.size $
+    S.filter
+        (\si ->
+             case si of
+                 UndeletedItem _ -> False
+                 _ -> True)
+        s
 
 -- | Add a new (unsynced) item to the store
 addItemToStore :: (Ord i, Ord a) => Added a -> Store i a -> Store i a
 addItemToStore a (Store s) = Store $ S.insert (UnsyncedItem a) s
 
-deleteUnsynced :: (Ord i, Ord a) => Added a -> Store i a -> (Store i a)
+deleteUnsynced :: (Ord i, Ord a) => Added a -> Store i a -> Store i a
 deleteUnsynced a (Store s) =
     Store $
     flip mapSetMaybe s $ \si ->
@@ -186,7 +193,7 @@ deleteUnsynced a (Store s) =
             SyncedItem _ -> Just si
             UndeletedItem _ -> Just si
 
-deleteSynced :: (Ord i, Ord a) => Synced i a -> Store i a -> (Store i a)
+deleteSynced :: (Ord i, Ord a) => Synced i a -> Store i a -> Store i a
 deleteSynced a (Store s) =
     Store $
     flip mapSetMaybe s $ \si ->
