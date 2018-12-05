@@ -10,9 +10,9 @@ extra-deps:
     subdirs:
       - typed-uuid
       - genvalidity-typed-uuid
-
+        
   - git: https://github.com/NorfairKing/validity
-    commit: a86dd3e4830c14c056a0d5d8712864d395d25b2a
+    commit: 226a0218502698447c191528826a2f54ba2ea20e
     subdirs:
       - validity
       - validity-containers

@@ -2,8 +2,6 @@
 
 module Data.GenValidity.Mergeless where
 
-import Test.QuickCheck
-
 import Data.GenValidity
 import Data.GenValidity.Containers ()
 import Data.GenValidity.Time ()
@@ -14,7 +12,7 @@ instance (GenUnchecked i, GenUnchecked a, Ord i, Ord a) =>
          GenUnchecked (Store i a)
 
 instance (GenValid i, GenValid a, Ord i, Ord a) => GenValid (Store i a) where
-    genValid = (Store <$> genValid) `suchThat` isValid
+    genValid = genValidStructurally
 
 instance (GenInvalid i, GenInvalid a, Ord i, Ord a) =>
          GenInvalid (Store i a)
@@ -28,16 +26,14 @@ instance (GenInvalid i, GenInvalid a) => GenInvalid (StoreItem i a)
 instance GenUnchecked a => GenUnchecked (Added a)
 
 instance GenValid a => GenValid (Added a) where
-    genValid = (Added <$> genValid <*> genValid) `suchThat` isValid
+    genValid = genValidStructurally
 
 instance GenInvalid a => GenInvalid (Added a)
 
 instance (GenUnchecked i, GenUnchecked a) => GenUnchecked (Synced i a)
 
 instance (GenValid i, GenValid a) => GenValid (Synced i a) where
-    genValid =
-        (Synced <$> genValid <*> genValid <*> genValid <*> genValid) `suchThat`
-        isValid
+    genValid = genValidStructurally
 
 instance (GenInvalid i, GenInvalid a) => GenInvalid (Synced i a)
 
@@ -46,8 +42,7 @@ instance (GenUnchecked i, GenUnchecked a, Ord i, Ord a) =>
 
 instance (GenValid i, GenValid a, Ord i, Ord a) =>
          GenValid (SyncRequest i a) where
-    genValid =
-        (SyncRequest <$> genValid <*> genValid <*> genValid) `suchThat` isValid
+    genValid = genValidStructurally
 
 instance (GenInvalid i, GenInvalid a, Ord i, Ord a) =>
          GenInvalid (SyncRequest i a)
@@ -57,8 +52,7 @@ instance (GenUnchecked i, GenUnchecked a, Ord i, Ord a) =>
 
 instance (GenValid i, GenValid a, Ord i, Ord a) =>
          GenValid (SyncResponse i a) where
-    genValid =
-        (SyncResponse <$> genValid <*> genValid <*> genValid) `suchThat` isValid
+    genValid = genValidStructurally
 
 instance (GenInvalid i, GenInvalid a, Ord i, Ord a) =>
          GenInvalid (SyncResponse i a)
@@ -66,8 +60,7 @@ instance (GenInvalid i, GenInvalid a, Ord i, Ord a) =>
 instance GenUnchecked a => GenUnchecked (CentralItem a)
 
 instance GenValid a => GenValid (CentralItem a) where
-    genValid =
-        (CentralItem <$> genValid <*> genValid <*> genValid) `suchThat` isValid
+    genValid = genValidStructurally
 
 instance GenInvalid a => GenInvalid (CentralItem a)
 
@@ -76,7 +69,7 @@ instance (GenUnchecked i, GenUnchecked a, Ord i, Ord a) =>
 
 instance (GenValid i, GenValid a, Ord i, Ord a) =>
          GenValid (CentralStore i a) where
-    genValid = (CentralStore <$> genValid) `suchThat` isValid
+    genValid = genValidStructurally
 
 instance (GenInvalid i, GenInvalid a, Ord i, Ord a) =>
          GenInvalid (CentralStore i a)
