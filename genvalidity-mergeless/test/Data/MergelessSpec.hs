@@ -6,6 +6,7 @@ module Data.MergelessSpec
     ( spec
     ) where
 
+import Data.Int (Int)
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import Data.Time
@@ -60,11 +61,12 @@ spec = do
     eqSpecOnValid @(CentralStore Rational Rational)
     ordSpecOnValid @(CentralStore Rational Rational)
     genValiditySpec @(CentralStore Rational Rational)
-    jsonSpecOnValid @(CentralStore Double Rational)
+    jsonSpecOnValid @(CentralStore Int Rational)
     describe "emptyStore" $
         it "is valid" $ shouldBeValid (emptyStore @Rational @Rational)
     describe "storeSize" $
-        it "does not crash" $ producesValidsOnValids (storeSize @Rational @Rational)
+        it "does not crash" $
+        producesValidsOnValids (storeSize @Rational @Rational)
     describe "addItemToStore" $
         it "produces valid stores" $
         producesValidsOnValids2 (addItemToStore @Rational @Rational)
@@ -109,7 +111,12 @@ spec = do
                     let cs = CentralStore sis
                     let (sr, cs') =
                             evalD $
-                            processSyncWith @(UUID Rational) @Rational genD synct cs $
+                            processSyncWith
+                                @(UUID Rational)
+                                @Rational
+                                genD
+                                synct
+                                cs $
                             SyncRequest S.empty (M.keysSet sis) S.empty
                     cs' `shouldBe` cs
                     sr `shouldBe` SyncResponse S.empty S.empty S.empty
@@ -296,7 +303,8 @@ spec = do
                             evalI $ do
                                 let central = CentralStore M.empty
                                 let store2 = Store S.empty
-                                let sreq1 = makeSyncRequest @Word @Rational store1
+                                let sreq1 =
+                                        makeSyncRequest @Word @Rational store1
                                 (sresp1, central') <-
                                     processSyncWith genI synct1 central sreq1
                                 let store1' = mergeSyncResponse store1 sresp1
@@ -358,7 +366,10 @@ spec = do
                     let initCentralStore = CentralStore M.empty
                     let go cs (store, synct) = do
                             let sreq =
-                                    makeSyncRequest @(UUID Rational) @Rational store
+                                    makeSyncRequest
+                                        @(UUID Rational)
+                                        @Rational
+                                        store
                             (_, central') <- processSyncWith genD synct cs sreq
                             pure central'
                     foldM
@@ -371,7 +382,8 @@ spec = do
                 evalI $ processSyncWith @Word @Rational genI synct cs sr
         it "produces valid results when using determinisitic UUIDs" $
             producesValidsOnValids3 $ \synct cs sr ->
-                evalD $ processSyncWith @(UUID Rational) @Rational genD synct cs sr
+                evalD $
+                processSyncWith @(UUID Rational) @Rational genD synct cs sr
         it "makes syncing idempotent with incrementing words" $
             forAllValid $ \synct1 ->
                 forAll (genValid `suchThat` (>= synct1)) $ \synct2 ->
