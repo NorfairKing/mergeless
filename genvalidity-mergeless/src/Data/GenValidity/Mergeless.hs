@@ -19,7 +19,8 @@ instance (GenInvalid i, GenInvalid a, Ord i, Ord a) =>
 
 instance (GenUnchecked i, GenUnchecked a) => GenUnchecked (StoreItem i a)
 
-instance (GenValid i, GenValid a) => GenValid (StoreItem i a)
+instance (GenValid i, GenValid a) => GenValid (StoreItem i a) where
+    genValid = genValidStructurally
 
 instance (GenInvalid i, GenInvalid a) => GenInvalid (StoreItem i a)
 
