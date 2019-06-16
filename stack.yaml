@@ -1,10 +1,8 @@
-resolver: lts-11.9
+resolver: lts-13.19
 packages:
   - mergeless
   - genvalidity-mergeless
 extra-deps:
-  - hlint-2.0.15
-  - extra-1.6.5
   - git: https://github.com/NorfairKing/typed-uuid
     commit: 155c9ec880ca1c12f7dd8a8468b3626de8164823
     subdirs:
@@ -12,7 +10,7 @@ extra-deps:
       - genvalidity-typed-uuid
         
   - git: https://github.com/NorfairKing/validity
-    commit: 226a0218502698447c191528826a2f54ba2ea20e
+    commit: 8a13a23696115845133d87118b81c47fa1f9b04b
     subdirs:
       - validity
       - validity-containers

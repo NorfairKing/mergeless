@@ -1,8 +1,10 @@
--- This file has been generated from package.yaml by hpack version 0.28.2.
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.1.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 6e70257c58f9b084549d6af348ed63f6b22a88fc476bc7ccf0ccc1aa729f5891
+-- hash: 22425f46e630aec06d562c6425e2248d5e2a6a54c50df69b57f2e1fbf5f8fcf4
 
 name:           genvalidity-mergeless
 version:        0.0.0.0
@@ -14,10 +16,9 @@ maintainer:     syd.kerckhove@gmail.com
 copyright:      Copyright: (c) 2018 Tom Sydney Kerckhove
 license:        MIT
 build-type:     Simple
-cabal-version:  >= 1.10
 extra-source-files:
-    ChangeLog.md
     README.md
+    ChangeLog.md
 
 source-repository head
   type: git
