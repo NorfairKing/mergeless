@@ -346,7 +346,7 @@ data SyncProcessor i a m = SyncProcessor
     { syncProcessorDeleteMany :: Set i -> m () -- ^ Delete the items with an identifier in the given set.
     , syncProcessorQuerySynced :: Set i -> m (Set i) -- ^ Query the identifiers of the items that are in store, of the given set.
     , syncProcessorQueryNewRemote :: Set i -> m (Set (Synced i a)) -- ^ Query the items that are in store, but not in the given set.
-    , syncProcessorInsertMany :: Set (Synced i a) -> m () -- ^ Insert a set of items into the stor.
+    , syncProcessorInsertMany :: Set (CentralItem a) -> m (Set (Synced i a)) -- ^ Insert a set of items into the store.
     } deriving (Generic)
 
 -- | Process a server-side synchronisation request using a custom synchronisation processor
@@ -356,12 +356,11 @@ data SyncProcessor i a m = SyncProcessor
 -- You can use this function with deterministically-random identifiers or incrementing identifiers.
 processSyncCustom ::
        forall i a m. (Ord i, Ord a, Monad m)
-    => m i
-    -> UTCTime
+    => UTCTime
     -> SyncProcessor i a m
     -> SyncRequest i a
     -> m (SyncResponse i a)
-processSyncCustom genUuid now SyncProcessor {..} SyncRequest {..} = do
+processSyncCustom now SyncProcessor {..} SyncRequest {..} = do
     deleteUndeleted
         -- First we delete the items that were deleted locally but not yet remotely.
         -- Then we find the items that have been deleted remotely but not locally
@@ -386,20 +385,13 @@ processSyncCustom genUuid now SyncProcessor {..} SyncRequest {..} = do
     syncNewRemoteItems :: m (Set (Synced i a))
     syncNewRemoteItems = syncProcessorQueryNewRemote syncRequestSyncedItems
     syncAddedItems :: m (Set (Synced i a))
-    syncAddedItems = do
-        is <-
-            fmap S.fromList $
-            forM (S.toList syncRequestAddedItems) $ \Added {..} -> do
-                uuid <- genUuid
-                pure
-                    Synced
-                        { syncedUuid = uuid
-                        , syncedCreated = addedCreated
-                        , syncedSynced = now
-                        , syncedValue = addedValue
-                        }
-        syncProcessorInsertMany is
-        pure is
+    syncAddedItems =
+        syncProcessorInsertMany $ flip S.map syncRequestAddedItems $ \Added{..} ->
+          CentralItem
+            { centralValue = addedValue
+            , centralSynced = now
+            , centralCreated = addedCreated
+            }
 
 -- | An item in a central store with a value of type @a@
 data CentralItem a = CentralItem
@@ -448,7 +440,6 @@ processSyncWith ::
 processSyncWith genUuid now cs sr =
     flip runStateT cs $
     processSyncCustom
-        (lift genUuid)
         now
         SyncProcessor
             { syncProcessorDeleteMany = deleteMany
@@ -476,16 +467,18 @@ processSyncWith genUuid now cs sr =
                     }
     query :: (Map i (CentralItem a) -> b) -> StateT (CentralStore i a) m b
     query func = gets $ func . centralStoreItems
-    insertMany :: Set (Synced i a) -> StateT (CentralStore i a) m ()
+    insertMany :: Set (CentralItem a) -> StateT (CentralStore i a) m (Set (Synced i a))
     insertMany s =
-        forM_ (S.toList s) $ \Synced {..} ->
-            ins
-                syncedUuid
-                CentralItem
-                    { centralValue = syncedValue
-                    , centralCreated = syncedCreated
-                    , centralSynced = syncedSynced
+        fmap S.fromList $ forM (S.toList s) $ \ci@CentralItem {..} -> do
+            i <- lift genUuid
+            ins i ci
+            let si = Synced
+                    { syncedUuid = i
+                    , syncedCreated = centralCreated
+                    , syncedSynced = centralSynced
+                    , syncedValue = centralValue
                     }
+            pure si
     ins :: i -> CentralItem a -> StateT (CentralStore i a) m ()
     ins i val = modC $ M.insert i val
     modC ::
