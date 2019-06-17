@@ -18,6 +18,7 @@ library:
   dependencies:
     - base >= 4.7 && < 5
     - QuickCheck
+    - containers
     - genvalidity
     - genvalidity-containers
     - genvalidity-time
