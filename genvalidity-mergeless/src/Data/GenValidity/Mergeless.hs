@@ -84,7 +84,7 @@ instance (GenUnchecked i, GenUnchecked a, GenInvalid i, GenInvalid a, Ord i, Ord
          GenInvalid (CentralStore i a)
 
 genUnsyncedStore ::
-     forall i a. (Ord i, Ord a, GenValid i, GenValid a, Num i)
+     forall i a. (Ord i, Ord a, GenValid i, GenValid a)
   => Gen (Store i a)
 genUnsyncedStore = do
   storeItems <- S.fromList <$> (genListOf $ UnsyncedItem <$> genValid)
