@@ -45,6 +45,7 @@
 module Data.Mergeless
   ( Added(..)
   , Synced(..)
+  , addedSynced
   , StoreItem(..)
   , Store(..)
   , emptyStore
@@ -64,6 +65,8 @@ module Data.Mergeless
     -- ** Synchronisation with a simple central store
   , CentralStore(..)
   , CentralItem(..)
+  , syncedCentralItem
+  , centralItemSynced
   , processSyncWith
   , processSync
   ) where
@@ -447,13 +450,7 @@ processSyncWith genUuid now cs sr =
       m <- query (`M.withoutKeys` s)
       pure $
         S.fromList $
-        flip map (M.toList m) $ \(i, CentralItem {..}) ->
-          Synced
-            { syncedUuid = i
-            , syncedCreated = centralCreated
-            , syncedSynced = centralSynced
-            , syncedValue = centralValue
-            }
+        flip map (M.toList m) $ \(i, ci ) -> centralItemSynced i ci
     query :: (Map i (CentralItem a) -> b) -> StateT (CentralStore i a) m b
     query func = gets $ func . centralStoreItems
     insertMany :: Set (CentralItem a) -> StateT (CentralStore i a) m (Set (Synced i a))
@@ -462,18 +459,31 @@ processSyncWith genUuid now cs sr =
       forM (S.toList s) $ \ci@CentralItem {..} -> do
         i <- lift genUuid
         ins i ci
-        let si =
-              Synced
-                { syncedUuid = i
-                , syncedCreated = centralCreated
-                , syncedSynced = centralSynced
-                , syncedValue = centralValue
-                }
-        pure si
+        pure $ centralItemSynced i ci
     ins :: i -> CentralItem a -> StateT (CentralStore i a) m ()
     ins i val = modC $ M.insert i val
     modC :: (Map i (CentralItem a) -> Map i (CentralItem a)) -> StateT (CentralStore i a) m ()
     modC func = modify (\(CentralStore m) -> CentralStore $ func m)
+
+syncedCentralItem :: Synced i a -> (i, CentralItem a)
+syncedCentralItem Synced {..} =
+  ( syncedUuid
+  , CentralItem
+      {centralValue = syncedValue, centralCreated = syncedCreated, centralSynced = syncedSynced})
+
+centralItemSynced :: i -> CentralItem a -> Synced i a
+centralItemSynced i CentralItem {..} =
+  Synced
+    { syncedUuid = i
+    , syncedValue = centralValue
+    , syncedCreated = centralCreated
+    , syncedSynced = centralSynced
+    }
+
+addedSynced :: i -> UTCTime -> Added a -> Synced i a
+addedSynced uuid now Added {..} =
+  Synced
+    {syncedUuid = uuid, syncedCreated = addedCreated, syncedSynced = now, syncedValue = addedValue}
 
 mapSetMaybe :: Ord b => (a -> Maybe b) -> Set a -> Set b
 mapSetMaybe func = S.map fromJust . S.filter isJust . S.map func
