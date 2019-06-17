@@ -299,37 +299,62 @@ makeSyncRequest Store {..} =
     }
 
 -- | Merge a synchronisation response back into a client-side store.
-mergeSyncResponse :: (Ord i, Ord a) => Store i a -> SyncResponse i a -> Store i a
+mergeSyncResponse ::
+     forall i a. (Ord i, Ord a)
+  => Store i a
+  -> SyncResponse i a
+  -> Store i a
 mergeSyncResponse s SyncResponse {..} =
-  let withNewOwnItems =
-        flip mapSetMaybe (storeItems s) $ \si ->
-          case si of
-            UnsyncedItem Added {..} ->
-              case find
-                     (\Synced {..} -> syncedCreated == addedCreated && syncedValue == addedValue)
-                     syncResponseAddedItems of
-                Nothing -> Just si -- If it wasn't added (for whatever reason), just leave it as unsynced
-                Just ii -> Just $ SyncedItem ii -- If it was added, then it becomes synced
-            SyncedItem ii ->
-              case find (== syncedUuid ii) syncResponseItemsToBeDeletedLocally of
-                Nothing -> Just si -- If it wasn't deleted, don't delete it.
-                Just _ -> Nothing -- If it was deleted, delete it here.
-            UndeletedItem _ -> Nothing -- Delete all locally deleted items after sync
-   in Store
-        { storeItems =
-            S.fromList .
-            nubBy
-              (\i1 i2 ->
-                 case (i1, i2) of
-                   (UnsyncedItem _, _) -> False
-                   (_, UnsyncedItem _) -> False
-                   (SyncedItem s1, SyncedItem s2) -> syncedUuid s1 == syncedUuid s2
-                   (SyncedItem s1, UndeletedItem u2) -> syncedUuid s1 == u2
-                   (UndeletedItem u1, SyncedItem s2) -> u1 == syncedUuid s2
-                   (UndeletedItem u1, UndeletedItem u2) -> u1 == u2) .
-            S.toList $
-            S.map SyncedItem syncResponseNewRemoteItems `S.union` withNewOwnItems
-        }
+  Store . thinStoreItems $
+  addRemotelyAddedItems syncResponseNewRemoteItems $
+  addAddedItems syncResponseAddedItems $
+  deleteItemsToBeDeletedLocally syncResponseItemsToBeDeletedLocally $
+  deleteLocalUndeletedItems $ storeItems s
+
+thinStoreItems :: (Ord i, Ord a) => Set (StoreItem i a) -> Set (StoreItem i a)
+thinStoreItems =
+  S.fromList .
+  nubBy
+    (\i1 i2 ->
+       case (i1, i2) of
+         (UnsyncedItem _, _) -> False
+         (_, UnsyncedItem _) -> False
+         (SyncedItem s1, SyncedItem s2) -> syncedUuid s1 == syncedUuid s2
+         (SyncedItem s1, UndeletedItem u2) -> syncedUuid s1 == u2
+         (UndeletedItem u1, SyncedItem s2) -> u1 == syncedUuid s2
+         (UndeletedItem u1, UndeletedItem u2) -> u1 == u2) .
+  S.toList
+
+addRemotelyAddedItems ::
+     (Ord i, Ord a) => Set (Synced i a) -> Set (StoreItem i a) -> Set (StoreItem i a)
+addRemotelyAddedItems remotelyAddedItems sis = S.map SyncedItem remotelyAddedItems `S.union` sis
+
+addAddedItems :: (Ord i, Ord a) => Set (Synced i a) -> Set (StoreItem i a) -> Set (StoreItem i a)
+addAddedItems addedItems sis =
+  flip S.map sis $ \si ->
+    case si of
+      UnsyncedItem Added {..} ->
+        case find
+               (\Synced {..} -> syncedCreated == addedCreated && syncedValue == addedValue)
+               addedItems of
+          Nothing -> si -- If it wasn't added (for whatever reason), just leave it as unsynced
+          Just ii -> SyncedItem ii -- If it was added, then it becomes synced
+      _ -> si
+
+deleteItemsToBeDeletedLocally ::
+     (Ord i, Ord a) => Set i -> Set (StoreItem i a) -> Set (StoreItem i a)
+deleteItemsToBeDeletedLocally toBeDeletedLocally sis =
+  flip mapSetMaybe sis $ \si ->
+    case si of
+      SyncedItem ii ->
+        case find (== syncedUuid ii) toBeDeletedLocally of
+          Nothing -> Just si -- If it wasn't deleted, don't delete it.
+          Just _ -> Nothing -- If it was deleted, delete it here.
+      _ -> Just si
+deleteLocalUndeletedItems :: (Ord i, Ord a) =>  Set( StoreItem i a) -> Set (StoreItem i a)
+deleteLocalUndeletedItems sis = flip mapSetMaybe sis $ \ si ->case si of
+    UndeletedItem _ -> Nothing
+    _ -> Just si
 
 -- | A record of the basic operations that are necessary to build a synchronisation processor.
 data SyncProcessor i a m =
@@ -448,9 +473,7 @@ processSyncWith genUuid now cs sr =
     queryNewRemote :: Set i -> StateT (CentralStore i a) m (Set (Synced i a))
     queryNewRemote s = do
       m <- query (`M.withoutKeys` s)
-      pure $
-        S.fromList $
-        flip map (M.toList m) $ \(i, ci ) -> centralItemSynced i ci
+      pure $ S.fromList $ flip map (M.toList m) $ \(i, ci) -> centralItemSynced i ci
     query :: (Map i (CentralItem a) -> b) -> StateT (CentralStore i a) m b
     query func = gets $ func . centralStoreItems
     insertMany :: Set (CentralItem a) -> StateT (CentralStore i a) m (Set (Synced i a))
