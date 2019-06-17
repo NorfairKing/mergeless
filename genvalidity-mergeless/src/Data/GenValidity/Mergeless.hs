@@ -4,9 +4,6 @@
 
 module Data.GenValidity.Mergeless where
 
-import Control.Monad
-import qualified Data.Map as M
-import Data.Set (Set)
 import qualified Data.Set as S
 
 import Data.GenValidity
@@ -92,65 +89,3 @@ genUnsyncedStore ::
 genUnsyncedStore = do
   storeItems <- S.fromList <$> (genListOf $ UnsyncedItem <$> genValid)
   pure Store {..}
-
-genStoreFor ::
-     forall i a. (Ord i, Ord a, GenValid i, GenValid a, Num i)
-  => CentralStore i a
-  -> Gen (Store i a)
-genStoreFor cs = genStoreForKeys $ M.keysSet $ centralStoreItems cs
-
-genStoreForKeys ::
-     forall i a. (Ord i, Ord a, GenValid i, GenValid a, Num i)
-  => Set i
-  -> Gen (Store i a)
-genStoreForKeys keys =
-  sized $ \n -> do
-    part <- arbPartition n
-    (_, storeItems) <-
-      foldM
-        (\(ks, items) s -> do
-           (item, mi) <-
-             resize s $
-             oneof
-               [ do i <- genIdGreaterThan ks
-                    let item = UndeletedItem i
-                    pure (item, Just i)
-               , do item <- UnsyncedItem <$> genValid
-                    pure (item, Nothing)
-               , do i <- genIdGreaterThan ks
-                    s_ <- genValid :: Gen (Synced i a)
-                    let item = SyncedItem $ s_ {syncedUuid = i}
-                    pure (item, Just i)
-               ]
-           pure $
-             case mi of
-               Nothing -> (ks, S.insert item items)
-               Just i -> (S.insert i ks, S.insert item items))
-        (keys, S.empty)
-        part
-    pure Store {..}
-
-genSyncRequestFor ::
-     forall i a. (Ord i, Ord a, GenValid i, GenValid a, Num i)
-  => CentralStore i a
-  -> Gen (SyncRequest i a)
-genSyncRequestFor cs = makeSyncRequest <$> genStoreFor cs
-
-genSetGreaterThan :: (Ord i, Num i, GenValid i) => Set i -> Gen (Set i)
-genSetGreaterThan keys =
-  sized $ \n -> do
-    part <- arbPartition n
-    foldM
-      (\ks s -> do
-         i <- resize s $ genIdGreaterThan ks
-         pure $ S.insert i ks)
-      keys
-      part
-
-genIdGreaterThan :: (Ord i, Num i, GenValid i) => Set i -> Gen i
-genIdGreaterThan keys =
-  let m =
-        case S.lookupMax keys of
-          Nothing -> 0
-          Just i -> i
-   in genValid `suchThat` (> m)
