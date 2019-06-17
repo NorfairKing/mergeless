@@ -86,29 +86,12 @@ instance (GenValid i, GenValid a, Ord i, Ord a) => GenValid (CentralStore i a) w
 instance (GenUnchecked i, GenUnchecked a, GenInvalid i, GenInvalid a, Ord i, Ord a) =>
          GenInvalid (CentralStore i a)
 
-genUnsyncedStore :: forall i a. (Ord i, Ord a, GenValid i, GenValid a, Num i) => Gen (Store i a)
+genUnsyncedStore ::
+     forall i a. (Ord i, Ord a, GenValid i, GenValid a, Num i)
+  => Gen (Store i a)
 genUnsyncedStore = do
-  sized $ \n -> do
-    part <- arbPartition n
-    (_, storeItems) <-
-      foldM
-        (\(ks, items) s -> do
-           (item, mi) <-
-             resize s $
-             oneof
-               [ do i <- genIdGreaterThan ks
-                    let item = UndeletedItem i
-                    pure (item, Just i)
-               , do item <- UnsyncedItem <$> genValid
-                    pure (item, Nothing)
-               ]
-           pure $
-             case mi of
-               Nothing -> (ks, S.insert item items)
-               Just i -> (S.insert i ks, S.insert item items))
-        (S.empty, S.empty)
-        part
-    pure Store {..}
+  storeItems <- S.fromList <$> (genListOf $ UnsyncedItem <$> genValid)
+  pure Store {..}
 
 genStoreFor ::
      forall i a. (Ord i, Ord a, GenValid i, GenValid a, Num i)
@@ -151,12 +134,7 @@ genSyncRequestFor ::
      forall i a. (Ord i, Ord a, GenValid i, GenValid a, Num i)
   => CentralStore i a
   -> Gen (SyncRequest i a)
-genSyncRequestFor cs = do
-  syncRequestAddedItems <- genValid
-  let keys = M.keysSet $ centralStoreItems cs
-  syncRequestSyncedItems <- genSetGreaterThan keys
-  syncRequestUndeletedItems <- genSetGreaterThan $ keys `S.union` syncRequestSyncedItems
-  pure SyncRequest {..}
+genSyncRequestFor cs = makeSyncRequest <$> genStoreFor cs
 
 genSetGreaterThan :: (Ord i, Num i, GenValid i) => Set i -> Gen (Set i)
 genSetGreaterThan keys =

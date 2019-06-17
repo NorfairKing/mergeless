@@ -13,6 +13,7 @@ import Data.Time
 import qualified Data.UUID.Typed as Typed
 import GHC.Generics (Generic)
 import System.Random
+import Text.Show.Pretty
 
 import Control.Monad.State
 
@@ -287,11 +288,16 @@ spec = do
                 (_, central') <- processSyncWith genD synct cs sreq
                 pure central'
           foldM go initCentralStore (tups :: [(Store (UUID Int) Int, UTCTime)])
-    it "produces valid results when using incrementing words" $
+    it "produces valid results when using incrementing words starting from an empty store" $
       forAllValid $ \synct ->
-        forAllValid $ \cs ->
-          forAll (genSyncRequestFor cs) $ \sr ->
-            shouldBeValid $ evalI $ processSyncWith @Word @Int genI synct cs sr
+        forAll (makeSyncRequest <$> genUnsyncedStore) $ \sreq -> do
+          let r@(sresp, cs') = evalI $ processSyncWith @Word @Int genI synct emptyCentralStore sreq
+          case prettyValidate r of
+            Left err ->
+              expectationFailure $
+              unlines
+                ["Inputs:", ppShow synct, ppShow sreq, "Outputs:", ppShow sresp, ppShow cs', err]
+            Right _ -> pure ()
     it "produces valid results when using determinisitic UUIDs" $
       producesValidsOnValids3 $ \synct cs sr ->
         evalD $ processSyncWith @(UUID Int) @Int genD synct cs sr

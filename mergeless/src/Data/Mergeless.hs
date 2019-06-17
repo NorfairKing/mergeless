@@ -64,6 +64,7 @@ module Data.Mergeless
   , processSyncCustom
     -- ** Synchronisation with a simple central store
   , CentralStore(..)
+  , emptyCentralStore
   , CentralItem(..)
   , syncedCentralItem
   , centralItemSynced
@@ -351,10 +352,13 @@ deleteItemsToBeDeletedLocally toBeDeletedLocally sis =
           Nothing -> Just si -- If it wasn't deleted, don't delete it.
           Just _ -> Nothing -- If it was deleted, delete it here.
       _ -> Just si
-deleteLocalUndeletedItems :: (Ord i, Ord a) =>  Set( StoreItem i a) -> Set (StoreItem i a)
-deleteLocalUndeletedItems sis = flip mapSetMaybe sis $ \ si ->case si of
-    UndeletedItem _ -> Nothing
-    _ -> Just si
+
+deleteLocalUndeletedItems :: (Ord i, Ord a) => Set (StoreItem i a) -> Set (StoreItem i a)
+deleteLocalUndeletedItems sis =
+  flip mapSetMaybe sis $ \si ->
+    case si of
+      UndeletedItem _ -> Nothing
+      _ -> Just si
 
 -- | A record of the basic operations that are necessary to build a synchronisation processor.
 data SyncProcessor i a m =
@@ -430,6 +434,10 @@ newtype CentralStore i a =
   deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
 instance (Validity i, Validity a, Ord i, Ord a) => Validity (CentralStore i a)
+
+-- | An empty central store to start with
+emptyCentralStore :: CentralStore i a
+emptyCentralStore = CentralStore M.empty
 
 -- | Process a server-side synchronisation request using @getCurrentTime@
 --
