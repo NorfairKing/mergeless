@@ -19,9 +19,8 @@ before_install:
 install:
   - stack setup
   - stack build --only-snapshot
-  - stack install hindent
 
 script:
   - git --version
   - stack --version
-  - travis_wait ./zift.hs run
+  - stack build --test --bench --no-run-benchmarks --pedantic 
