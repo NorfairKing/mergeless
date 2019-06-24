@@ -23,4 +23,4 @@ install:
 script:
   - git --version
   - stack --version
-  - stack build --test --bench --no-run-benchmarks --pedantic 
+  - stack build --haddock --test --bench --no-run-benchmarks --pedantic 
