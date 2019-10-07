@@ -2,7 +2,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Data.MergelessSpec
+module Data.Mergeless.CollectionSpec
   ( spec
   ) where
 
@@ -22,9 +22,9 @@ import Test.QuickCheck
 import Test.Validity
 import Test.Validity.Aeson
 
-import Data.GenValidity.Mergeless
+import Data.GenValidity.Mergeless.Collection
 import Data.GenValidity.UUID.Typed ()
-import Data.Mergeless
+import Data.Mergeless.Collection
 import Data.UUID.Typed
 
 {-# ANN module ("HLint: ignore Reduce duplication" :: String) #-}
