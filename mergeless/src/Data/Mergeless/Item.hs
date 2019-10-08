@@ -52,9 +52,13 @@ data Synced a =
 
 instance Validity a => Validity (Synced a)
 
-instance FromJSON a => FromJSON (Synced a)
+instance FromJSON a => FromJSON (Synced a) where
+  parseJSON =
+    withObject "Synced" $ \o -> Synced <$> o .: "value" <*> o .: "created" <*> o .: "synced"
 
-instance ToJSON a => ToJSON (Synced a)
+instance ToJSON a => ToJSON (Synced a) where
+  toJSON Synced {..} =
+    object ["value" .= syncedValue, "created" .= syncedCreated, "synced" .= syncedSynced]
 
 data ClientItem a
   = ClientEmpty
@@ -70,69 +74,69 @@ instance FromJSON a => FromJSON (ClientItem a)
 instance ToJSON a => ToJSON (ClientItem a)
 
 -- | A synchronisation request for items with identifiers of type @i@ and values of type @a@
-data SyncRequest a
-  = SyncRequestPoll
-  | SyncRequestNew !(Added a)
-  | SyncRequestKnown
-  | SyncRequestDeleted
+data ItemSyncRequest a
+  = ItemSyncRequestPoll
+  | ItemSyncRequestNew !(Added a)
+  | ItemSyncRequestKnown
+  | ItemSyncRequestDeleted
   deriving (Show, Eq, Ord, Generic)
 
-instance Validity a => Validity (SyncRequest a)
+instance Validity a => Validity (ItemSyncRequest a)
 
-instance FromJSON a => FromJSON (SyncRequest a)
+instance FromJSON a => FromJSON (ItemSyncRequest a)
 
-instance ToJSON a => ToJSON (SyncRequest a)
+instance ToJSON a => ToJSON (ItemSyncRequest a)
 
-makeItemSyncRequest :: ClientItem a -> SyncRequest a
+makeItemSyncRequest :: ClientItem a -> ItemSyncRequest a
 makeItemSyncRequest ci =
   case ci of
-    ClientEmpty -> SyncRequestPoll
-    ClientAdded a -> SyncRequestNew a
-    ClientSynced _ -> SyncRequestKnown
-    ClientDeleted -> SyncRequestDeleted
+    ClientEmpty -> ItemSyncRequestPoll
+    ClientAdded a -> ItemSyncRequestNew a
+    ClientSynced _ -> ItemSyncRequestKnown
+    ClientDeleted -> ItemSyncRequestDeleted
 
 -- | A synchronisation response for items with identifiers of type @i@ and values of type @a@
-data SyncResponse a
-  = SyncResponseInSyncEmpty
-  | SyncResponseInSyncFull
-  | SyncResponseClientAdded UTCTime -- The time when it was synced
-  | SyncResponseClientDeleted
-  | SyncResponseServerAdded !(Synced a)
-  | SyncResponseServerDeleted
+data ItemSyncResponse a
+  = ItemSyncResponseInSyncEmpty
+  | ItemSyncResponseInSyncFull
+  | ItemSyncResponseClientAdded UTCTime -- The time when it was synced
+  | ItemSyncResponseClientDeleted
+  | ItemSyncResponseServerAdded !(Synced a)
+  | ItemSyncResponseServerDeleted
   deriving (Show, Eq, Ord, Generic)
 
-instance Validity a => Validity (SyncResponse a)
+instance Validity a => Validity (ItemSyncResponse a)
 
-instance FromJSON a => FromJSON (SyncResponse a)
+instance FromJSON a => FromJSON (ItemSyncResponse a)
 
-instance ToJSON a => ToJSON (SyncResponse a)
+instance ToJSON a => ToJSON (ItemSyncResponse a)
 
 -- | Merge a synchronisation response back into a client-side store.
-mergeItemSyncResponse :: ClientItem a -> SyncResponse a -> ClientItem a
+mergeItemSyncResponse :: ClientItem a -> ItemSyncResponse a -> ClientItem a
 mergeItemSyncResponse ci sr =
   let mismatch = ci
    in case ci of
         ClientEmpty ->
           case sr of
-            SyncResponseInSyncEmpty -> ClientEmpty
-            SyncResponseServerAdded s -> ClientSynced s
+            ItemSyncResponseInSyncEmpty -> ClientEmpty
+            ItemSyncResponseServerAdded s -> ClientSynced s
             _ -> mismatch
         ClientAdded a ->
           case sr of
-            SyncResponseClientAdded t -> ClientSynced (addedToSynced t a)
-            SyncResponseServerAdded s -> ClientSynced s
+            ItemSyncResponseClientAdded t -> ClientSynced (addedToSynced t a)
+            ItemSyncResponseServerAdded s -> ClientSynced s
             -- For completeness sake.
             -- This can only happen if two clients make the item at the same time.
             -- In practice, with named items in a collection, this will never happen.
             _ -> mismatch
         ClientSynced s ->
           case sr of
-            SyncResponseInSyncFull -> ci -- No change
-            SyncResponseServerDeleted -> ClientEmpty
+            ItemSyncResponseInSyncFull -> ci -- No change
+            ItemSyncResponseServerDeleted -> ClientEmpty
             _ -> mismatch
         ClientDeleted ->
           case sr of
-            SyncResponseClientDeleted -> ClientEmpty
+            ItemSyncResponseClientDeleted -> ClientEmpty
             _ -> mismatch
 
 -- | An item in a central store with a value of type @a@
@@ -147,40 +151,41 @@ instance FromJSON a => FromJSON (ServerItem a)
 
 instance ToJSON a => ToJSON (ServerItem a)
 
-processServerItemSync :: UTCTime -> ServerItem a -> SyncRequest a -> (SyncResponse a, ServerItem a)
+processServerItemSync ::
+     UTCTime -> ServerItem a -> ItemSyncRequest a -> (ItemSyncResponse a, ServerItem a)
 processServerItemSync now si sr =
   case si of
     ServerItemEmpty ->
       case sr of
-        SyncRequestPoll
+        ItemSyncRequestPoll
           -- Both the client and the server think the item is empty, fine.
-         -> (SyncResponseInSyncEmpty, si)
-        SyncRequestNew a
+         -> (ItemSyncResponseInSyncEmpty, si)
+        ItemSyncRequestNew a
           -- The client has a new item and the server has space for it, add it.
-         -> (SyncResponseClientAdded now, ServerItemFull $ addedToSynced now a)
-        SyncRequestKnown
+         -> (ItemSyncResponseClientAdded now, ServerItemFull $ addedToSynced now a)
+        ItemSyncRequestKnown
           -- The client has an item that the server doesn't, so the server must have
           -- deleted it when another client asked to do that.
           -- Leave it deleted.
-         -> (SyncResponseServerDeleted, si)
-        SyncRequestDeleted
+         -> (ItemSyncResponseServerDeleted, si)
+        ItemSyncRequestDeleted
           -- The server has deleted an item but the current client hasn't been made aware of that
           -- AND this server also deleted that item in the meantime.
           -- Just leave it deleted.
-         -> (SyncResponseClientDeleted, si)
+         -> (ItemSyncResponseClientDeleted, si)
     ServerItemFull s ->
       case sr of
-        SyncRequestPoll
+        ItemSyncRequestPoll
           -- The server has an item that the client doesn't, send it to the client.
-         -> (SyncResponseServerAdded s, si)
-        SyncRequestNew _
+         -> (ItemSyncResponseServerAdded s, si)
+        ItemSyncRequestNew _
           -- The client wants to add an item that the server already has.
           -- That means that another client has added that same item in the meantime.
           -- This wouldn't happen if the items were named.
           -- In this case, for completeness sake,
-         -> (SyncResponseServerAdded s, si)
-        SyncRequestKnown -> (SyncResponseInSyncFull, si)
-        SyncRequestDeleted -> (SyncResponseClientDeleted, ServerItemEmpty)
+         -> (ItemSyncResponseServerAdded s, si)
+        ItemSyncRequestKnown -> (ItemSyncResponseInSyncFull, si)
+        ItemSyncRequestDeleted -> (ItemSyncResponseClientDeleted, ServerItemEmpty)
 
 addedToSynced :: UTCTime -> Added a -> Synced a
 addedToSynced syncTime Added {..} =
