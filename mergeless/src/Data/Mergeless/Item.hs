@@ -6,29 +6,6 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
--- | A way to synchronise a single item without merge conflicts.
---
--- This concept has as a requirement that the item is immutable.
---
---
--- The typical setup is as follows:
---
--- * A central server is set up to synchronise with
--- * Each client synchronises with the central server, but never with eachother
---
---
--- A central server should operate as follows:
---
--- * The server accepts an 'ItemSyncRequest'.
--- * The server performs operations according to the functionality of 'processItemSync'.
--- * The server respons with an 'ItemSyncResponse'.
---
---
--- A client should operate as follows:
---
--- * The client produces an 'ItemSyncRequest' with 'makeItemSyncRequest'.
--- * The client sends that request to the central server and gets an 'ItemSyncResponse'.
--- * The client then updates its local store with 'mergeItemSyncResponse'.
 module Data.Mergeless.Item where
 
 import Control.Applicative
@@ -131,8 +108,8 @@ instance FromJSON a => FromJSON (SyncResponse a)
 instance ToJSON a => ToJSON (SyncResponse a)
 
 -- | Merge a synchronisation response back into a client-side store.
-mergeSyncResponse :: ClientItem a -> SyncResponse a -> ClientItem a
-mergeSyncResponse ci sr =
+mergeItemSyncResponse :: ClientItem a -> SyncResponse a -> ClientItem a
+mergeItemSyncResponse ci sr =
   let mismatch = ci
    in case ci of
         ClientEmpty ->
@@ -170,8 +147,8 @@ instance FromJSON a => FromJSON (ServerItem a)
 
 instance ToJSON a => ToJSON (ServerItem a)
 
-processItemSync :: UTCTime -> ServerItem a -> SyncRequest a -> (SyncResponse a, ServerItem a)
-processItemSync now si sr =
+processServerItemSync :: UTCTime -> ServerItem a -> SyncRequest a -> (SyncResponse a, ServerItem a)
+processServerItemSync now si sr =
   case si of
     ServerItemEmpty ->
       case sr of

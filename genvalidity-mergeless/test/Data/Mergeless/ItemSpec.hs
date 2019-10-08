@@ -52,9 +52,23 @@ spec = do
   describe "makeItemSyncrequest" $
     it "produces valid requests" $ producesValidsOnValids (makeItemSyncRequest @Int)
   describe "mergeSyncResponse" $
-    it "produces valid client items" $ producesValidsOnValids2 (mergeSyncResponse @Int)
+    it "produces valid client items" $ producesValidsOnValids2 (mergeItemSyncResponse @Int)
   describe "processItemSync" $
-    it "produces valid tuples" $ producesValidsOnValids3 (processItemSync @Int)
+    it "produces valid tuples" $ producesValidsOnValids3 (processServerItemSync @Int)
+  describe "syncing" $
+    it "is idempotent with one client" $
+    forAllValid $ \t1 ->
+      forAllValid $ \t2 ->
+        forAllValid $ \si1 ->
+          forAllValid $ \ci1 -> do
+            let req1 = makeItemSyncRequest @Int ci1
+                (resp1, si2) = processServerItemSync t1 si1 req1
+                ci2 = mergeItemSyncResponse ci1 resp1
+                req2 = makeItemSyncRequest ci2
+                (resp2, si3) = processServerItemSync t2 si2 req2
+                ci3 = mergeItemSyncResponse ci2 resp2
+            ci3 `shouldBe` ci2
+            si3 `shouldBe` si2
 
 newtype D a =
   D

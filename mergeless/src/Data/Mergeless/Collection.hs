@@ -72,9 +72,12 @@ module Data.Mergeless.Collection
   , processSync
   ) where
 
-import Control.Applicative
-import Control.Monad.IO.Class
-import Control.Monad.State.Strict
+import GHC.Generics (Generic)
+
+import Data.Validity
+import Data.Validity.Containers ()
+import Data.Validity.Time ()
+
 import Data.Aeson
 import Data.List
 import Data.Map.Strict (Map)
@@ -83,10 +86,10 @@ import Data.Maybe
 import qualified Data.Set as S
 import Data.Set (Set)
 import Data.Time
-import Data.Validity
-import Data.Validity.Containers ()
-import Data.Validity.Time ()
-import GHC.Generics (Generic)
+
+import Control.Applicative
+import Control.Monad.IO.Class
+import Control.Monad.State.Strict
 
 {-# ANN module ("HLint: ignore Use lambda-case" :: String) #-}
 
