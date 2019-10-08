@@ -5,38 +5,6 @@
 
 packages:
 - completed:
-    subdir: typed-uuid
-    cabal-file:
-      size: 1291
-      sha256: b9de24a5b4c5d6aae1ffe2d61b0effa1aba822a2faa13a1149152899409d1309
-    name: typed-uuid
-    version: 0.0.0.1
-    git: https://github.com/NorfairKing/typed-uuid
-    pantry-tree:
-      size: 308
-      sha256: 5f77a1e32448368df62e17a78997b20b678e7fcdf4a97287314c53b8dc01fc91
-    commit: 155c9ec880ca1c12f7dd8a8468b3626de8164823
-  original:
-    subdir: typed-uuid
-    git: https://github.com/NorfairKing/typed-uuid
-    commit: 155c9ec880ca1c12f7dd8a8468b3626de8164823
-- completed:
-    subdir: genvalidity-typed-uuid
-    cabal-file:
-      size: 1722
-      sha256: 71811bb6b273123f208a6bb58ade0382a11ec4aaec491b7532b3d3146e7c68dd
-    name: genvalidity-typed-uuid
-    version: 0.0.0.1
-    git: https://github.com/NorfairKing/typed-uuid
-    pantry-tree:
-      size: 438
-      sha256: 215f6522a33dd4534f654385ff8fd6d7f9427ee0e42bfa1a8d06ca8e22ba089a
-    commit: 155c9ec880ca1c12f7dd8a8468b3626de8164823
-  original:
-    subdir: genvalidity-typed-uuid
-    git: https://github.com/NorfairKing/typed-uuid
-    commit: 155c9ec880ca1c12f7dd8a8468b3626de8164823
-- completed:
     subdir: validity
     cabal-file:
       size: 2660

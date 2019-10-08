@@ -43,14 +43,15 @@
 -- * The client sends that request to the central server and gets a 'SyncResponse'.
 -- * The client then updates its local store with 'mergeSyncResponse'.
 module Data.Mergeless.Collection
-  ( ClientId(..),Added(..)
+  ( ClientId(..)
+  , Added(..)
   , Synced(..)
   , ClientStore(..)
   , emptyClientStore
   , storeSize
   , addItemToClientStore
-  , deleteUnsynced
-  , deleteSynced
+  , deleteUnsyncedFromClientStore
+  , deleteSyncedFromClientStore
   , SyncRequest(..)
   , SyncResponse(..)
     -- * Client-side Synchronisation
@@ -149,11 +150,11 @@ addItemToClientStore a cs =
          in M.insert newKey a oldAddedItems
    in cs {clientStoreAdded = newAddedItems}
 
-deleteUnsynced :: (Ord i, Ord a) => ClientId -> ClientStore i a -> ClientStore i a
-deleteUnsynced cid cs = cs {clientStoreAdded = M.delete cid $ clientStoreAdded cs}
+deleteUnsyncedFromClientStore :: (Ord i, Ord a) => ClientId -> ClientStore i a -> ClientStore i a
+deleteUnsyncedFromClientStore cid cs = cs {clientStoreAdded = M.delete cid $ clientStoreAdded cs}
 
-deleteSynced :: (Ord i, Ord a) => i -> ClientStore i a -> ClientStore i a
-deleteSynced i cs =
+deleteSyncedFromClientStore :: (Ord i, Ord a) => i -> ClientStore i a -> ClientStore i a
+deleteSyncedFromClientStore i cs =
   let syncedBefore = clientStoreSynced cs
    in case M.lookup i syncedBefore of
         Nothing -> cs
@@ -168,7 +169,7 @@ data SyncRequest i a =
   SyncRequest
     { syncRequestAdded :: !(Map ClientId (Added a))
     , syncRequestSynced :: !(Set i)
-    , syncRequestUndeleted :: !(Set i)
+    , syncRequestDeleted :: !(Set i)
     }
   deriving (Show, Eq, Ord, Generic)
 
@@ -177,7 +178,7 @@ instance (Validity i, Validity a, Ord i, Ord a) => Validity (SyncRequest i a) wh
     mconcat
       [ genericValidate sr
       , declare "the sync request items have distinct ids" $
-        distinct $ S.toList syncRequestSynced ++ S.toList syncRequestUndeleted
+        distinct $ S.toList syncRequestSynced ++ S.toList syncRequestDeleted
       ]
 
 instance (FromJSON i, FromJSON a, Ord i, Ord a) => FromJSON (SyncRequest i a) where
@@ -190,7 +191,7 @@ instance (ToJSON i, ToJSON a) => ToJSON (SyncRequest i a) where
     object
       [ "added" .= syncRequestAdded
       , "synced" .= syncRequestSynced
-      , "undeleted" .= syncRequestUndeleted
+      , "undeleted" .= syncRequestDeleted
       ]
 
 -- | Produce a synchronisation request for a client-side store.
@@ -201,7 +202,7 @@ makeSyncRequest ClientStore {..} =
   SyncRequest
     { syncRequestAdded = clientStoreAdded
     , syncRequestSynced = M.keysSet clientStoreSynced
-    , syncRequestUndeleted = clientStoreDeleted
+    , syncRequestDeleted = clientStoreDeleted
     }
 
 -- | A synchronisation response for items with identifiers of type @i@ and values of type @a@
@@ -307,7 +308,7 @@ processServerSyncCustom now ServerSyncProcessor {..} SyncRequest {..} = do
       }
   where
     deleteUndeleted :: m (Set i)
-    deleteUndeleted = serverSyncProcessorDeleteMany syncRequestUndeleted
+    deleteUndeleted = serverSyncProcessorDeleteMany syncRequestDeleted
     syncItemsToBeDeletedLocally :: m (Set i)
     syncItemsToBeDeletedLocally = do
       foundItems <- serverSyncProcessorQuerySynced syncRequestSynced
@@ -320,7 +321,7 @@ processServerSyncCustom now ServerSyncProcessor {..} SyncRequest {..} = do
 -- | A central store of items with identifiers of type @i@ and values of type @a@
 newtype ServerStore i a =
   ServerStore
-    { centralClientStoreItems :: Map i (Synced a)
+    { serverStoreItems :: Map i (Synced a)
     }
   deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
@@ -328,7 +329,7 @@ instance (Validity i, Validity a, Ord i, Ord a) => Validity (ServerStore i a)
 
 -- | An empty central store to start with
 emptyServerStore :: ServerStore i a
-emptyServerStore = ServerStore M.empty
+emptyServerStore = ServerStore {serverStoreItems = M.empty}
 
 -- | Process a server-side synchronisation request using @getCurrentTime@
 --
@@ -372,7 +373,7 @@ processServerSyncWith genUuid now cs sr =
     queryNewRemote :: Set i -> StateT (ServerStore i a) m (Map i (Synced a))
     queryNewRemote s = undefined
     query :: (Map i (Synced a) -> b) -> StateT (ServerStore i a) m b
-    query func = gets $ func . centralClientStoreItems
+    query func = gets $ func . serverStoreItems
     insertMany :: Map ClientId (Added a) -> StateT (ServerStore i a) m (Map ClientId (i, UTCTime))
     insertMany s = undefined
     ins :: i -> Synced a -> StateT (ServerStore i a) m ()
