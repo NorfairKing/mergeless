@@ -24,21 +24,25 @@ instance GenUnchecked a => GenUnchecked (Synced a)
 instance GenValid a => GenValid (Synced a) where
   genValid = genValidStructurallyWithoutExtraChecking
   shrinkValid = shrinkValidStructurallyWithoutExtraFiltering
+
 instance GenUnchecked a => GenUnchecked (ClientItem a)
 
 instance GenValid a => GenValid (ClientItem a) where
   genValid = genValidStructurallyWithoutExtraChecking
   shrinkValid = shrinkValidStructurallyWithoutExtraFiltering
-instance GenUnchecked a => GenUnchecked (SyncRequest a)
 
-instance GenValid a => GenValid (SyncRequest a) where
+instance GenUnchecked a => GenUnchecked (ItemSyncRequest a)
+
+instance GenValid a => GenValid (ItemSyncRequest a) where
   genValid = genValidStructurallyWithoutExtraChecking
   shrinkValid = shrinkValidStructurallyWithoutExtraFiltering
-instance GenUnchecked a => GenUnchecked (SyncResponse a)
 
-instance GenValid a => GenValid (SyncResponse a) where
+instance GenUnchecked a => GenUnchecked (ItemSyncResponse a)
+
+instance GenValid a => GenValid (ItemSyncResponse a) where
   genValid = genValidStructurallyWithoutExtraChecking
   shrinkValid = shrinkValidStructurallyWithoutExtraFiltering
+
 instance GenUnchecked a => GenUnchecked (ServerItem a)
 
 instance GenValid a => GenValid (ServerItem a) where

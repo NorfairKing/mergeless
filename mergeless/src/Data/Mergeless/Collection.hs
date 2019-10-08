@@ -43,7 +43,7 @@
 -- * The client sends that request to the central server and gets a 'SyncResponse'.
 -- * The client then updates its local store with 'mergeSyncResponse'.
 module Data.Mergeless.Collection
-  ( Added(..)
+  ( ClientId(..),Added(..)
   , Synced(..)
   , ClientStore(..)
   , emptyClientStore

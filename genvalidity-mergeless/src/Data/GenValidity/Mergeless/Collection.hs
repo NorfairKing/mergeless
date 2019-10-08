@@ -11,42 +11,19 @@ import Data.GenValidity.Containers ()
 import Data.GenValidity.Time ()
 import Test.QuickCheck
 
+import Data.GenValidity.Mergeless.Item
 import Data.Mergeless
 
-instance (GenUnchecked i, GenUnchecked a, Ord i, Ord a) => GenUnchecked (Store i a)
+instance GenUnchecked ClientId
+instance GenValid ClientId
+instance (GenUnchecked i, GenUnchecked a, Ord i, Ord a) => GenUnchecked (ClientStore i a)
 
-instance (GenValid i, GenValid a, Ord i, Ord a) => GenValid (Store i a) where
+instance (GenValid i, GenValid a, Ord i, Ord a) => GenValid (ClientStore i a) where
   genValid = genValidStructurally
   shrinkValid = shrinkValidStructurally
 
 instance (GenUnchecked i, GenUnchecked a, GenInvalid i, GenInvalid a, Ord i, Ord a) =>
-         GenInvalid (Store i a)
-
-instance (GenUnchecked i, GenUnchecked a) => GenUnchecked (StoreItem i a)
-
-instance (GenValid i, GenValid a) => GenValid (StoreItem i a) where
-  genValid = genValidStructurally
-  shrinkValid = shrinkValidStructurally
-
-instance (GenUnchecked i, GenUnchecked a, GenInvalid i, GenInvalid a) =>
-         GenInvalid (StoreItem i a)
-
-instance GenUnchecked a => GenUnchecked (Added a)
-
-instance GenValid a => GenValid (Added a) where
-  genValid = genValidStructurally
-  shrinkValid = shrinkValidStructurally
-
-instance (GenUnchecked a, GenInvalid a) => GenInvalid (Added a)
-
-instance (GenUnchecked i, GenUnchecked a) => GenUnchecked (Synced i a)
-
-instance (GenValid i, GenValid a) => GenValid (Synced i a) where
-  genValid = genValidStructurally
-  shrinkValid = shrinkValidStructurally
-
-instance (GenUnchecked i, GenUnchecked a, GenInvalid i, GenInvalid a) =>
-         GenInvalid (Synced i a)
+         GenInvalid (ClientStore i a)
 
 instance (GenUnchecked i, GenUnchecked a, Ord i, Ord a) => GenUnchecked (SyncRequest i a)
 
@@ -66,26 +43,18 @@ instance (GenValid i, GenValid a, Ord i, Ord a) => GenValid (SyncResponse i a) w
 instance (GenUnchecked i, GenUnchecked a, GenInvalid i, GenInvalid a, Ord i, Ord a) =>
          GenInvalid (SyncResponse i a)
 
-instance GenUnchecked a => GenUnchecked (CentralItem a)
+instance (GenUnchecked i, GenUnchecked a, Ord i, Ord a) => GenUnchecked (ServerStore i a)
 
-instance GenValid a => GenValid (CentralItem a) where
-  genValid = genValidStructurally
-  shrinkValid = shrinkValidStructurally
-
-instance (GenUnchecked a, GenInvalid a) => GenInvalid (CentralItem a)
-
-instance (GenUnchecked i, GenUnchecked a, Ord i, Ord a) => GenUnchecked (CentralStore i a)
-
-instance (GenValid i, GenValid a, Ord i, Ord a) => GenValid (CentralStore i a) where
+instance (GenValid i, GenValid a, Ord i, Ord a) => GenValid (ServerStore i a) where
   genValid = genValidStructurally
   shrinkValid = shrinkValidStructurally
 
 instance (GenUnchecked i, GenUnchecked a, GenInvalid i, GenInvalid a, Ord i, Ord a) =>
-         GenInvalid (CentralStore i a)
+         GenInvalid (ServerStore i a)
 
 genUnsyncedStore ::
      forall i a. (Ord i, Ord a, GenValid i, GenValid a)
-  => Gen (Store i a)
+  => Gen (ClientStore i a)
 genUnsyncedStore = do
-  storeItems <- S.fromList <$> (genListOf $ UnsyncedItem <$> genValid)
-  pure Store {..}
+  as <- genValid
+  pure $ emptyClientStore {clientStoreAdded = as}
