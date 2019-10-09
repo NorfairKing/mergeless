@@ -34,19 +34,19 @@ spec :: Spec
 spec = do
   eqSpecOnValid @(ClientStore Int Int)
   ordSpecOnValid @(ClientStore Int Int)
-  genValiditySpec @(ClientStore Int Int)
+  genValidSpec @(ClientStore Int Int)
   jsonSpecOnValid @(ClientStore Int Int)
   eqSpecOnValid @(SyncRequest Int Int)
   ordSpecOnValid @(SyncRequest Int Int)
-  genValiditySpec @(SyncRequest Int Int)
+  genValidSpec @(SyncRequest Int Int)
   jsonSpecOnValid @(SyncRequest Int Int)
   eqSpecOnValid @(SyncResponse Int Int)
   ordSpecOnValid @(SyncResponse Int Int)
-  genValiditySpec @(SyncResponse Int Int)
+  genValidSpec @(SyncResponse Int Int)
   jsonSpecOnValid @(SyncResponse Int Int)
   eqSpecOnValid @(ServerStore Int Int)
   ordSpecOnValid @(ServerStore Int Int)
-  genValiditySpec @(ServerStore Int Int)
+  genValidSpec @(ServerStore Int Int)
   jsonSpecOnValid @(ServerStore Int Int)
   describe "emptyStore" $ it "is valid" $ shouldBeValid (emptyClientStore @Int @Int)
   describe "storeSize" $ it "does not crash" $ producesValidsOnValids (storeSize @Int @Int)
@@ -114,8 +114,7 @@ spec = do
         forAllValid $ \cs ->
           forAllValid $ \sreq -> do
             let (sresp, _) = evalD $ processServerSyncWith @UUID @Int genD synct cs sreq
-            S.map syncedValue (syncResponseClientAdded sresp) `shouldBe`
-              S.map addedValue (syncRequestAdded sreq)
+            M.keysSet (syncResponseClientAdded sresp) `shouldBe` M.keysSet (syncRequestAdded sreq)
     it "returns the single added item" $
       forAllValid $ \synct ->
         forAllValid $ \cs ->
@@ -129,22 +128,22 @@ spec = do
                     synct
                     cs
                     SyncRequest
-                      { syncRequestAdded = M.singleton 0 ai
+                      { syncRequestAdded = M.singleton (ClientId 0) ai
                       , syncRequestSynced = S.empty
                       , syncRequestDeleted = S.empty
                       }
-            S.map syncedValue (syncResponseClientAdded sresp) `shouldBe` S.singleton (addedValue ai)
+            M.keysSet (syncResponseClientAdded sresp) `shouldBe` S.singleton (ClientId 0)
     it "adds the items that were added" $
       forAllValid $ \synct ->
         forAllValid $ \cs ->
           forAllValid $ \sreq -> do
             let (_, cs') = evalD $ processServerSyncWith @UUID @Int genD synct cs sreq
-            S.map addedValue (syncRequestAdded sreq) `shouldSatisfy`
-              all (`elem` (M.elems $ M.map syncedValue $ serverStoreItems cs'))
+            S.fromList (M.elems (M.map addedValue (syncRequestAdded sreq))) `shouldSatisfy`
+              (`S.isSubsetOf` (S.fromList $ M.elems $ M.map syncedValue $ serverStoreItems cs'))
     it
       "returns the single remotely added item if the sync request is empty and the central store has one item" $
       forAllValid $ \synct ->
-        forAllValid $ \(uuid, ci) -> do
+        forAllValid $ \(uuid, si) -> do
           let (sresp, _) =
                 evalD $
                 processServerSyncWith
@@ -152,16 +151,16 @@ spec = do
                   @Int
                   genD
                   synct
-                  (ServerStore $ M.singleton uuid ci)
+                  (ServerStore $ M.singleton uuid si)
                   SyncRequest
                     { syncRequestAdded = M.empty
                     , syncRequestSynced = S.empty
                     , syncRequestDeleted = S.empty
                     }
-          S.map syncedValue (syncResponseServerAdded sresp) `shouldBe` S.singleton (syncedValue ci)
+          syncResponseServerAdded sresp `shouldBe` M.singleton uuid si
     it "returns all remotely added items when no items are locally added or deleted" $
       forAllValid $ \synct ->
-        forAllValid $ \cs ->
+        forAllValid $ \ss ->
           forAllValid $ \sis -> do
             let (sresp, _) =
                   evalD $
@@ -170,16 +169,17 @@ spec = do
                     @Int
                     genD
                     synct
-                    cs
+                    ss
                     SyncRequest
                       { syncRequestAdded = M.empty
                       , syncRequestSynced = sis
                       , syncRequestDeleted = S.empty
                       }
-            syncResponseServerAdded sresp `shouldBe` (serverStoreItems cs `S.difference` sis)
+            syncResponseServerAdded sresp `shouldBe`
+              (serverStoreItems ss `M.difference` (M.fromSet (const ()) sis))
     it "returns all remotely added items when no items are locally deleted " $
       forAllValid $ \synct ->
-        forAllValid $ \cs ->
+        forAllValid $ \ss ->
           forAllValid $ \sis ->
             forAllValid $ \ais -> do
               let (sresp, _) =
@@ -189,16 +189,17 @@ spec = do
                       @Int
                       genD
                       synct
-                      cs
+                      ss
                       SyncRequest
                         { syncRequestAdded = ais
                         , syncRequestSynced = sis
                         , syncRequestDeleted = S.empty
                         }
-              syncResponseServerAdded sresp `shouldBe` (serverStoreItems cs `S.difference` sis)
+              syncResponseServerAdded sresp `shouldBe`
+                (serverStoreItems ss `M.difference` (M.fromSet (const ()) sis))
     it "returns all remotely added items that weren't deleted when no items are locally added " $
       forAllValid $ \synct ->
-        forAllValid $ \cs ->
+        forAllValid $ \ss ->
           forAllValid $ \sis ->
             forAllValid $ \dis -> do
               let (sresp, _) =
@@ -208,21 +209,22 @@ spec = do
                       @Int
                       genD
                       synct
-                      cs
+                      ss
                       SyncRequest
                         { syncRequestAdded = M.empty
                         , syncRequestSynced = sis
                         , syncRequestDeleted = dis
                         }
-              syncResponseServerAdded sresp `shouldBe` (serverStoreItems cs `S.difference` sis)
+              syncResponseServerAdded sresp `shouldBe`
+                (serverStoreItems ss `M.difference` M.fromSet (const ()) sis)
     it "returns all remotely added items that weren't deleted" $
       forAllValid $ \synct ->
-        forAllValid $ \cs ->
+        forAllValid $ \ss ->
           forAllValid $ \sreq -> do
-            let (sresp, _) = evalD $ processServerSyncWith @UUID @Int genD synct cs sreq
+            let (sresp, _) = evalD $ processServerSyncWith @UUID @Int genD synct ss sreq
             syncResponseServerAdded sresp `shouldBe`
-              ((serverStoreItems cs `S.difference` syncRequestDeleted sreq) `S.difference`
-               syncRequestSynced sreq)
+              (serverStoreItems ss `M.difference`
+               M.fromSet (const ()) (syncRequestDeleted sreq `S.union` syncRequestSynced sreq))
     it "successfully syncs two clients using a central store when using incrementing words" $
       forAllValid $ \store1 ->
         forAllValid $ \(synct1, synct2, synct3) -> do

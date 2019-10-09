@@ -10,7 +10,7 @@ import Data.Int (Int)
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import Data.Time
-import qualified Data.UUID.Typed as Typed
+import qualified Data.UUID as UUID
 import GHC.Generics (Generic)
 import System.Random
 import Text.Show.Pretty
@@ -23,9 +23,10 @@ import Test.Validity
 import Test.Validity.Aeson
 
 import Data.GenValidity.Mergeless.Item ()
-import Data.GenValidity.UUID.Typed ()
+import Data.GenValidity.UUID ()
 import Data.Mergeless.Item
-import Data.UUID.Typed
+import Data.UUID
+import Data.UUID.V4
 
 {-# ANN module ("HLint: ignore Reduce duplication" :: String) #-}
 
@@ -40,18 +41,18 @@ spec = do
   eqSpecOnValid @(ClientItem Int)
   genValidSpec @(ClientItem Int)
   jsonSpecOnValid @(ClientItem Int)
-  eqSpecOnValid @(SyncRequest Int)
-  genValidSpec @(SyncRequest Int)
-  jsonSpecOnValid @(SyncRequest Int)
-  eqSpecOnValid @(SyncResponse Int)
-  genValidSpec @(SyncResponse Int)
-  jsonSpecOnValid @(SyncResponse Int)
+  eqSpecOnValid @(ItemSyncRequest Int)
+  genValidSpec @(ItemSyncRequest Int)
+  jsonSpecOnValid @(ItemSyncRequest Int)
+  eqSpecOnValid @(ItemSyncResponse Int)
+  genValidSpec @(ItemSyncResponse Int)
+  jsonSpecOnValid @(ItemSyncResponse Int)
   eqSpecOnValid @(ServerItem Int)
   genValidSpec @(ServerItem Int)
   jsonSpecOnValid @(ServerItem Int)
   describe "makeItemSyncrequest" $
     it "produces valid requests" $ producesValidsOnValids (makeItemSyncRequest @Int)
-  describe "mergeSyncResponse" $
+  describe "mergeItemSyncResponse" $
     it "produces valid client items" $ producesValidsOnValids2 (mergeItemSyncResponse @Int)
   describe "processItemSync" $
     it "produces valid tuples" $ producesValidsOnValids3 (processServerItemSync @Int)
@@ -82,7 +83,7 @@ evalD d = fst $ runD d $ mkStdGen 42
 runD :: D a -> StdGen -> (a, StdGen)
 runD = runState . unD
 
-genD :: D (Typed.UUID a)
+genD :: D UUID
 genD = do
   r <- get
   let (u, r') = random r
