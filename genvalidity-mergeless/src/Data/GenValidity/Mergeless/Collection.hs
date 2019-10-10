@@ -37,8 +37,26 @@ instance (GenUnchecked i, GenUnchecked a, GenInvalid i, GenInvalid a, Ord i, Ord
 instance (GenUnchecked i, GenUnchecked a, Ord i, Ord a) => GenUnchecked (SyncResponse i a)
 
 instance (GenValid i, GenValid a, Ord i, Ord a) => GenValid (SyncResponse i a) where
-  genValid = genValidStructurally
+  genValid = do
+    identifiers <- scale (*4) genValid
+    (s1,s2) <- splitSet identifiers
+    (s3,s4) <- splitSet s1
+    (s5,s6) <- splitSet s2
+    pure ()
   shrinkValid = shrinkValidStructurally
+
+splitSet :: Ord i => Set i -> Gen (Set i, Set i)
+splitSet s =
+  if S.null s
+    then pure (S.empty, S.empty)
+    else do
+      a <- elements $ S.toList s
+      pure $ S.split a s
+
+
+mapWithIds :: (Ord i, GenValid a) => Set i -> Gen (Map i a)
+mapWithIds s = fmap M.fromList $ for (S.toList s) $ \i -> (,) i <$> genValid
+
 
 instance (GenUnchecked i, GenUnchecked a, GenInvalid i, GenInvalid a, Ord i, Ord a) =>
          GenInvalid (SyncResponse i a)
