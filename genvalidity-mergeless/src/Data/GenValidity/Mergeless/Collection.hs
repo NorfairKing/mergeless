@@ -4,7 +4,12 @@
 
 module Data.GenValidity.Mergeless.Collection where
 
+import qualified Data.Map as M
+import Data.Map (Map)
 import qualified Data.Set as S
+import Data.Set (Set)
+
+import Control.Monad
 
 import Data.GenValidity
 import Data.GenValidity.Containers ()
@@ -15,7 +20,9 @@ import Data.GenValidity.Mergeless.Item
 import Data.Mergeless
 
 instance GenUnchecked ClientId
+
 instance GenValid ClientId
+
 instance (GenUnchecked i, GenUnchecked a, Ord i, Ord a) => GenUnchecked (ClientStore i a)
 
 instance (GenValid i, GenValid a, Ord i, Ord a) => GenValid (ClientStore i a) where
@@ -38,11 +45,20 @@ instance (GenUnchecked i, GenUnchecked a, Ord i, Ord a) => GenUnchecked (SyncRes
 
 instance (GenValid i, GenValid a, Ord i, Ord a) => GenValid (SyncResponse i a) where
   genValid = do
-    identifiers <- scale (*4) genValid
-    (s1,s2) <- splitSet identifiers
-    (s3,s4) <- splitSet s1
-    (s5,s6) <- splitSet s2
-    pure ()
+    identifiers <- scale (* 4) genValid
+    (s1, s2) <- splitSet identifiers
+    (s3, s4) <- splitSet s1
+    (s5, s6) <- splitSet s2
+    syncResponseClientAdded <-
+      fmap M.fromList $
+      forM (S.toList s3) $ \i -> do
+        cid <- genValid -- TODO maybe we can find a way to not generate duplicate client ids and speed up this generator, but it's fine for now.
+        t <- genValid
+        pure (cid, (i, t))
+    let syncResponseClientDeleted = s4
+    syncResponseServerAdded <- mapWithIds s5
+    let syncResponseServerDeleted = s6
+    pure SyncResponse {..}
   shrinkValid = shrinkValidStructurally
 
 splitSet :: Ord i => Set i -> Gen (Set i, Set i)
@@ -53,10 +69,8 @@ splitSet s =
       a <- elements $ S.toList s
       pure $ S.split a s
 
-
 mapWithIds :: (Ord i, GenValid a) => Set i -> Gen (Map i a)
-mapWithIds s = fmap M.fromList $ for (S.toList s) $ \i -> (,) i <$> genValid
-
+mapWithIds s = fmap M.fromList $ forM (S.toList s) $ \i -> (,) i <$> genValid
 
 instance (GenUnchecked i, GenUnchecked a, GenInvalid i, GenInvalid a, Ord i, Ord a) =>
          GenInvalid (SyncResponse i a)

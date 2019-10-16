@@ -258,16 +258,39 @@ mergeSyncResponse s SyncResponse {..} =
   s
 
 addRemotelyAddedItems :: (Ord i, Ord a) => Map i (Synced a) -> ClientStore i a -> ClientStore i a
-addRemotelyAddedItems = undefined
+addRemotelyAddedItems m cs = cs {clientStoreSynced = M.union (clientStoreSynced cs) m}
 
-addAddedItems :: (Ord i, Ord a) => Map ClientId (i, UTCTime) -> ClientStore i a -> ClientStore i a
-addAddedItems addedItems sis = undefined
+addAddedItems ::
+     forall i a. (Ord i, Ord a)
+  => Map ClientId (i, UTCTime)
+  -> ClientStore i a
+  -> ClientStore i a
+addAddedItems addedItems cs =
+  let oldAdded = clientStoreAdded cs
+      oldSynced = clientStoreSynced cs
+      go ::
+           (Map ClientId (Added a), Map i (Synced a))
+        -> ClientId
+        -> (i, UTCTime)
+        -> (Map ClientId (Added a), Map i (Synced a))
+      go (added, synced) cid (i, st) =
+        case M.lookup cid added of
+          Nothing -> (added, synced)
+          Just a ->
+            let s = addedToSynced st a
+             in (M.delete cid added, M.insert i s synced)
+      (newAdded, newSynced) = M.foldlWithKey go (oldAdded, oldSynced) addedItems
+   in cs {clientStoreAdded = newAdded}
 
 deleteItemsToBeDeletedLocally :: (Ord i, Ord a) => Set i -> ClientStore i a -> ClientStore i a
-deleteItemsToBeDeletedLocally toBeDeletedLocally sis = undefined
+deleteItemsToBeDeletedLocally toBeDeletedLocally cs =
+  cs
+    { clientStoreSynced =
+        M.difference (clientStoreSynced cs) (M.fromSet (const ()) toBeDeletedLocally)
+    }
 
 deleteLocalUndeletedItems :: (Ord i, Ord a) => Set i -> ClientStore i a -> ClientStore i a
-deleteLocalUndeletedItems cd sis = undefined
+deleteLocalUndeletedItems cd cs = cs {clientStoreDeleted = clientStoreDeleted cs `S.difference` cd}
 
 -- | A record of the basic operations that are necessary to build a synchronisation processor.
 data ServerSyncProcessor i a m =
