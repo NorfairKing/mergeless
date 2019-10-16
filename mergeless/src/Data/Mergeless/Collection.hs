@@ -390,15 +390,25 @@ processServerSyncWith genUuid now cs sr =
     sr
   where
     deleteMany :: Set i -> StateT (ServerStore i a) m (Set i)
-    deleteMany s = undefined
+    deleteMany s = do
+      m <- query id
+      let ms = M.fromSet (const ()) s
+      let int = M.keysSet $ M.intersection m ms
+      modC (`M.difference` ms)
+      pure int
     querySynced :: Set i -> StateT (ServerStore i a) m (Set i)
     querySynced s = M.keysSet <$> query (`M.restrictKeys` s)
     queryNewRemote :: Set i -> StateT (ServerStore i a) m (Map i (Synced a))
-    queryNewRemote s = undefined
+    queryNewRemote s = query (`M.difference` M.fromSet (const ()) s)
     query :: (Map i (Synced a) -> b) -> StateT (ServerStore i a) m b
     query func = gets $ func . serverStoreItems
     insertMany :: Map ClientId (Added a) -> StateT (ServerStore i a) m (Map ClientId (i, UTCTime))
-    insertMany s = undefined
+    insertMany =
+      M.traverseWithKey $ \cid a -> do
+        u <- lift genUuid
+        let s = addedToSynced now a
+        ins u s
+        pure (u, now)
     ins :: i -> Synced a -> StateT (ServerStore i a) m ()
     ins i val = modC $ M.insert i val
     modC :: (Map i (Synced a) -> Map i (Synced a)) -> StateT (ServerStore i a) m ()

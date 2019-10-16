@@ -7,7 +7,9 @@ module Data.Mergeless.CollectionSpec
   ) where
 
 import Data.Int (Int)
+import Data.List
 import qualified Data.Map.Strict as M
+import Data.Ord
 import qualified Data.Set as S
 import Data.Time
 import qualified Data.UUID as UUID
@@ -49,33 +51,34 @@ spec = do
   genValidSpec @(ServerStore Int Int)
   jsonSpecOnValid @(ServerStore Int Int)
   describe "emptyStore" $ it "is valid" $ shouldBeValid (emptyClientStore @Int @Int)
-  describe "storeSize" $ it "does not crash" $ producesValidsOnValids (storeSize @Int @Int)
+  describe "storeSize" $ do
+    it "does not crash" $ producesValidsOnValids (storeSize @Int @Int)
+    specify "deleting an unsynced item after adding it leaves the store with the original size" $
+      forAllValid $ \store ->
+        forAllValid $ \added ->
+          let size1 = storeSize (store :: ClientStore Int Int)
+              store' = addItemToClientStore added store
+           in case sortOn (Down . fst) $ M.toList (clientStoreAdded store') of
+                [] -> expectationFailure "Expected a nonempty list"
+                (i, _):_ ->
+                  let store'' = deleteUnsyncedFromClientStore i store'
+                      size2 = storeSize store''
+                   in size2 `shouldBe` size1
+    specify "deleting a synced item after adding it leaves the store with the original size" $
+      forAllValid $ \store ->
+        forAll (genValid `suchThat` (\uuid -> not $ M.member uuid $ clientStoreSynced store)) $ \uuid ->
+          forAllValid $ \synced ->
+            let size1 = storeSize (store :: ClientStore Int Int)
+                store' = store {clientStoreSynced = M.insert uuid synced $ clientStoreSynced store}
+                store'' = deleteSyncedFromClientStore uuid store'
+                size2 = storeSize store''
+             in size2 `shouldBe` size1
   describe "addItemToClientStore" $
     it "produces valid stores" $ producesValidsOnValids2 (addItemToClientStore @Int @Int)
   describe "deleteUnsyncedFromClientStore" $
     it "produces valid stores" $ producesValidsOnValids2 (deleteUnsyncedFromClientStore @Int @Int)
   describe "deleteSyncedFromClientStore" $
     it "produces valid stores" $ producesValidsOnValids2 (deleteSyncedFromClientStore @Int @Int)
-  describe "storeSize" $ do
-    specify "deleting an unsynced item after adding it leaves the store with the original size" $
-      forAllValid $ \store ->
-        forAllValid $ \added ->
-          let size1 = storeSize (store :: ClientStore Int Int)
-              store' = addItemToClientStore added store
-           in case M.toList (clientStoreAdded store') of
-                [(i, _)] ->
-                  let store'' = deleteUnsyncedFromClientStore i store'
-                      size2 = storeSize store''
-                   in size2 `shouldBe` size1
-                _ -> expectationFailure "Expected exactly one element."
-    specify "deleting a synced item after adding it leaves the store with the original size" $
-      forAllValid $ \store ->
-        forAllValid $ \(uuid, synced) ->
-          let size1 = storeSize (store :: ClientStore Int Int)
-              store' = store {clientStoreSynced = M.insert uuid synced $ clientStoreSynced store}
-              store'' = deleteSyncedFromClientStore uuid store'
-              size2 = storeSize store''
-           in size2 `shouldBe` size1
   describe "makeSyncRequest" $
     it "produces valid sync requests" $ producesValidsOnValids (makeSyncRequest @Int @Int)
   describe "mergeSyncResponse" $
