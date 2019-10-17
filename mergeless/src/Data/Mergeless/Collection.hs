@@ -296,8 +296,10 @@ deleteLocalUndeletedItems cd cs = cs {clientStoreDeleted = clientStoreDeleted cs
 -- | A record of the basic operations that are necessary to build a synchronisation processor.
 data ServerSyncProcessor i a m =
   ServerSyncProcessor
-    { serverSyncProcessorDeleteMany :: Set i -> m (Set i) -- ^ Delete the items with an identifier in the given set, return the set that was indeed deleted.
-    , serverSyncProcessorQuerySynced :: Set i -> m (Set i) -- ^ Query the identifiers of the items that are in store, of the given set.
+    { serverSyncProcessorDeleteMany :: Set i -> m (Set i)
+      -- ^ Delete the items with an identifier in the given set, return the set that was indeed deleted or did not exist.
+      -- In particular, return the identifiers of the items that the client should forget about.
+    , serverSyncProcessorQueryNotSynced :: Set i -> m (Set i) -- ^ Query the identifiers of the items that are in store, but not in the given set.
     , serverSyncProcessorQueryNewRemote :: Set i -> m (Map i (Synced a)) -- ^ Query the items that are in store, but not in the given set.
     , serverSyncProcessorInsertMany :: Map ClientId (Added a) -> m (Map ClientId (i, UTCTime)) -- ^ Insert a set of items into the store.
     }
@@ -334,9 +336,7 @@ processServerSyncCustom now ServerSyncProcessor {..} SyncRequest {..} = do
     deleteUndeleted :: m (Set i)
     deleteUndeleted = serverSyncProcessorDeleteMany syncRequestDeleted
     syncItemsToBeDeletedLocally :: m (Set i)
-    syncItemsToBeDeletedLocally = do
-      foundItems <- serverSyncProcessorQuerySynced syncRequestSynced
-      pure $ syncRequestSynced `S.difference` foundItems
+    syncItemsToBeDeletedLocally = serverSyncProcessorQueryNotSynced syncRequestSynced
     syncNewRemoteItems :: m (Map i (Synced a))
     syncNewRemoteItems = serverSyncProcessorQueryNewRemote syncRequestSynced
     syncAddedItems :: m (Map ClientId (i, UTCTime))
@@ -384,21 +384,18 @@ processServerSyncWith genUuid now cs sr =
     now
     ServerSyncProcessor
       { serverSyncProcessorDeleteMany = deleteMany
-      , serverSyncProcessorQuerySynced = querySynced
+      , serverSyncProcessorQueryNotSynced = queryNotSynced
       , serverSyncProcessorQueryNewRemote = queryNewRemote
       , serverSyncProcessorInsertMany = insertMany
       }
     sr
   where
     deleteMany :: Set i -> StateT (ServerStore i a) m (Set i)
-    deleteMany s = do
-      m <- query id
-      let ms = toMap s
-      let int = M.keysSet $ M.intersection m ms
+    deleteMany s =  do
       modC (`diffSet` s)
-      pure int
-    querySynced :: Set i -> StateT (ServerStore i a) m (Set i)
-    querySynced s = M.keysSet <$> query (`M.restrictKeys` s)
+      pure s
+    queryNotSynced :: Set i -> StateT (ServerStore i a) m (Set i)
+    queryNotSynced s = query (M.keysSet . (`diffSet` s))
     queryNewRemote :: Set i -> StateT (ServerStore i a) m (Map i (Synced a))
     queryNewRemote s = query (`diffSet` s)
     query :: (Map i (Synced a) -> b) -> StateT (ServerStore i a) m b
