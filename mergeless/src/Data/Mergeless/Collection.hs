@@ -136,6 +136,9 @@ emptyClientStore =
 storeSize :: ClientStore i a -> Int
 storeSize ClientStore {..} = M.size clientStoreAdded + M.size clientStoreSynced
 
+clientStoreIds :: Ord i => ClientStore i a -> Set i
+clientStoreIds ClientStore {..} = M.keysSet clientStoreSynced `S.union` clientStoreDeleted
+
 -- | Add a new (unsynced) item to the store
 addItemToClientStore :: (Ord i, Ord a) => Added a -> ClientStore i a -> ClientStore i a
 addItemToClientStore a cs =
@@ -258,7 +261,8 @@ mergeSyncResponse s SyncResponse {..} =
   s
 
 addRemotelyAddedItems :: (Ord i, Ord a) => Map i (Synced a) -> ClientStore i a -> ClientStore i a
-addRemotelyAddedItems m cs = cs {clientStoreSynced = M.union (clientStoreSynced cs) m}
+addRemotelyAddedItems m cs =
+  cs {clientStoreSynced = M.union (clientStoreSynced cs) (m `diffSet` clientStoreIds cs)}
 
 addAddedItems ::
      forall i a. (Ord i, Ord a)
@@ -284,10 +288,7 @@ addAddedItems addedItems cs =
 
 deleteItemsToBeDeletedLocally :: (Ord i, Ord a) => Set i -> ClientStore i a -> ClientStore i a
 deleteItemsToBeDeletedLocally toBeDeletedLocally cs =
-  cs
-    { clientStoreSynced =
-        M.difference (clientStoreSynced cs) (M.fromSet (const ()) toBeDeletedLocally)
-    }
+  cs {clientStoreSynced = clientStoreSynced cs `diffSet` toBeDeletedLocally}
 
 deleteLocalUndeletedItems :: (Ord i, Ord a) => Set i -> ClientStore i a -> ClientStore i a
 deleteLocalUndeletedItems cd cs = cs {clientStoreDeleted = clientStoreDeleted cs `S.difference` cd}
@@ -392,14 +393,14 @@ processServerSyncWith genUuid now cs sr =
     deleteMany :: Set i -> StateT (ServerStore i a) m (Set i)
     deleteMany s = do
       m <- query id
-      let ms = M.fromSet (const ()) s
+      let ms = toMap s
       let int = M.keysSet $ M.intersection m ms
-      modC (`M.difference` ms)
+      modC (`diffSet` s)
       pure int
     querySynced :: Set i -> StateT (ServerStore i a) m (Set i)
     querySynced s = M.keysSet <$> query (`M.restrictKeys` s)
     queryNewRemote :: Set i -> StateT (ServerStore i a) m (Map i (Synced a))
-    queryNewRemote s = query (`M.difference` M.fromSet (const ()) s)
+    queryNewRemote s = query (`diffSet` s)
     query :: (Map i (Synced a) -> b) -> StateT (ServerStore i a) m b
     query func = gets $ func . serverStoreItems
     insertMany :: Map ClientId (Added a) -> StateT (ServerStore i a) m (Map ClientId (i, UTCTime))
@@ -414,8 +415,11 @@ processServerSyncWith genUuid now cs sr =
     modC :: (Map i (Synced a) -> Map i (Synced a)) -> StateT (ServerStore i a) m ()
     modC func = modify (\(ServerStore m) -> ServerStore $ func m)
 
-mapSetMaybe :: Ord b => (a -> Maybe b) -> Set a -> Set b
-mapSetMaybe func = S.map fromJust . S.filter isJust . S.map func
+diffSet :: Ord i => Map i a -> Set i -> Map i a
+diffSet m s = m `M.difference` toMap s
+
+toMap :: Set i -> Map i ()
+toMap = M.fromSet (const ())
 
 distinct :: Ord a => [a] -> Bool
 distinct ls = sort ls == S.toAscList (S.fromList ls)
