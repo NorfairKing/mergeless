@@ -25,7 +25,7 @@ library:
     - mergeless
 
 tests:
-  genvalidity-mergeless-test:
+  mergeless-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:

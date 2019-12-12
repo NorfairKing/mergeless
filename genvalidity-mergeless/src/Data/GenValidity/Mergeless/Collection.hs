@@ -21,29 +21,34 @@ import Data.Mergeless
 
 instance GenUnchecked ClientId
 
-instance GenValid ClientId
-
-instance (GenUnchecked i, GenUnchecked a, Ord i, Ord a) => GenUnchecked (ClientStore i a)
-
-instance (GenValid i, GenValid a, Ord i, Ord a) => GenValid (ClientStore i a) where
+instance GenValid ClientId where
   genValid = genValidStructurally
   shrinkValid = shrinkValidStructurally
 
-instance (GenUnchecked i, GenUnchecked a, GenInvalid i, GenInvalid a, Ord i, Ord a) =>
+instance (GenUnchecked i, GenUnchecked a, Show i, Show a, Ord i, Ord a) =>
+         GenUnchecked (ClientStore i a)
+
+instance (GenValid i, GenValid a, Show i, Show a, Ord i, Ord a) => GenValid (ClientStore i a) where
+  genValid = genValidStructurally
+  shrinkValid = shrinkValidStructurally
+
+instance (GenUnchecked i, GenUnchecked a, Show i, Show a, GenInvalid i, GenInvalid a, Ord i, Ord a) =>
          GenInvalid (ClientStore i a)
 
-instance (GenUnchecked i, GenUnchecked a, Ord i, Ord a) => GenUnchecked (SyncRequest i a)
+instance (GenUnchecked i, GenUnchecked a, Show i, Show a, Ord i, Ord a) =>
+         GenUnchecked (SyncRequest i a)
 
-instance (GenValid i, GenValid a, Ord i, Ord a) => GenValid (SyncRequest i a) where
+instance (GenValid i, GenValid a, Show i, Show a, Ord i, Ord a) => GenValid (SyncRequest i a) where
   genValid = genValidStructurally
   shrinkValid = shrinkValidStructurally
 
-instance (GenUnchecked i, GenUnchecked a, GenInvalid i, GenInvalid a, Ord i, Ord a) =>
+instance (GenUnchecked i, GenUnchecked a, Show i, Show a, GenInvalid i, GenInvalid a, Ord i, Ord a) =>
          GenInvalid (SyncRequest i a)
 
-instance (GenUnchecked i, GenUnchecked a, Ord i, Ord a) => GenUnchecked (SyncResponse i a)
+instance (GenUnchecked i, GenUnchecked a, Show i, Show a, Ord i, Ord a) =>
+         GenUnchecked (SyncResponse i a)
 
-instance (GenValid i, GenValid a, Ord i, Ord a) => GenValid (SyncResponse i a) where
+instance (GenValid i, GenValid a, Show i, Show a, Ord i, Ord a) => GenValid (SyncResponse i a) where
   genValid = do
     identifiers <- scale (* 4) genValid
     (s1, s2) <- splitSet identifiers
@@ -72,16 +77,16 @@ splitSet s =
 mapWithIds :: (Ord i, GenValid a) => Set i -> Gen (Map i a)
 mapWithIds s = fmap M.fromList $ forM (S.toList s) $ \i -> (,) i <$> genValid
 
-instance (GenUnchecked i, GenUnchecked a, GenInvalid i, GenInvalid a, Ord i, Ord a) =>
+instance (GenUnchecked i, GenUnchecked a, Show i, Show a, GenInvalid i, GenInvalid a, Ord i, Ord a) =>
          GenInvalid (SyncResponse i a)
 
 instance (GenUnchecked i, GenUnchecked a, Ord i, Ord a) => GenUnchecked (ServerStore i a)
 
-instance (GenValid i, GenValid a, Ord i, Ord a) => GenValid (ServerStore i a) where
+instance (GenValid i, GenValid a, Show i, Show a, Ord i, Ord a) => GenValid (ServerStore i a) where
   genValid = genValidStructurally
   shrinkValid = shrinkValidStructurally
 
-instance (GenUnchecked i, GenUnchecked a, GenInvalid i, GenInvalid a, Ord i, Ord a) =>
+instance (GenUnchecked i, GenUnchecked a, Show i, Show a, GenInvalid i, GenInvalid a, Ord i, Ord a) =>
          GenInvalid (ServerStore i a)
 
 genUnsyncedStore ::

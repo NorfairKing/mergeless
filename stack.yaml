@@ -1,10 +1,10 @@
-resolver: lts-13.19
+resolver: lts-14.7
 packages:
   - mergeless
   - genvalidity-mergeless
 extra-deps:
-  - git: https://github.com/NorfairKing/validity
-    commit: 8a13a23696115845133d87118b81c47fa1f9b04b
+  - github: NorfairKing/validity
+    commit: c5a6efb92d96941308f55220a6f42f399acb1951
     subdirs:
       - validity
       - validity-containers

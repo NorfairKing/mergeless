@@ -112,7 +112,7 @@ data ClientStore i a =
     }
   deriving (Show, Eq, Ord, Generic)
 
-instance (Validity i, Validity a, Ord i, Ord a) => Validity (ClientStore i a) where
+instance (Validity i, Validity a, Show i, Show a, Ord i, Ord a) => Validity (ClientStore i a) where
   validate cs@ClientStore {..} =
     mconcat
       [ genericValidate cs
@@ -218,7 +218,7 @@ data SyncResponse i a =
     }
   deriving (Show, Eq, Ord, Generic)
 
-instance (Validity i, Validity a, Ord i, Ord a) => Validity (SyncResponse i a) where
+instance (Validity i, Validity a, Show i, Show a, Ord i, Ord a) => Validity (SyncResponse i a) where
   validate sr@SyncResponse {..} =
     mconcat
       [ genericValidate sr
@@ -349,7 +349,7 @@ newtype ServerStore i a =
     }
   deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
-instance (Validity i, Validity a, Ord i, Ord a) => Validity (ServerStore i a)
+instance (Validity i, Validity a, Show i, Show a, Ord i, Ord a) => Validity (ServerStore i a)
 
 -- | An empty central store to start with
 emptyServerStore :: ServerStore i a
@@ -391,7 +391,7 @@ processServerSyncWith genUuid now cs sr =
     sr
   where
     deleteMany :: Set i -> StateT (ServerStore i a) m (Set i)
-    deleteMany s =  do
+    deleteMany s = do
       modC (`diffSet` s)
       pure s
     queryNotSynced :: Set i -> StateT (ServerStore i a) m (Set i)

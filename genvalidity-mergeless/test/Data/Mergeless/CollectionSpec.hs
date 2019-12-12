@@ -93,9 +93,10 @@ spec = do
           let cs' = mergeSyncResponse @Int @Int cs sr
            in clientStoreDeleted cs' `shouldBe`
               (clientStoreDeleted cs `S.difference` syncResponseClientDeleted sr)
-  describe "processServerSyncWith" $ do
-    describe "incrementing words" $ serverSyncSpec @Int evalI $ processServerSyncWith genI
+  describe "processServerSyncWith" $
+   do
     describe "deterministic UUIDs" $ serverSyncSpec @Int evalD $ processServerSyncWith genD
+    -- describe "incrementing words" $ serverSyncSpec @Int evalI $ processServerSyncWith genI
 
 serverSyncSpec ::
      forall a i m. (Show i, Ord i, GenValid i, Show a, Ord a, GenValid a, Monad m)
