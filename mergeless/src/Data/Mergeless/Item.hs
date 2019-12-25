@@ -1,7 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -9,11 +7,11 @@
 module Data.Mergeless.Item where
 
 import Control.Applicative
+import Control.DeepSeq
 import Control.Monad.IO.Class
 import Control.Monad.State.Strict
 import Data.Aeson
 import Data.List
-import Control.DeepSeq
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Maybe

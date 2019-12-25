@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -316,7 +315,7 @@ addAddedItems addedItems cs =
       go ::
            (Map ClientId (Added a), Map i (Synced a))
         -> ClientId
-        -> (ClientAddition i)
+        -> ClientAddition i
         -> (Map ClientId (Added a), Map i (Synced a))
       go (added, synced) cid ClientAddition {..} =
         case M.lookup cid added of
@@ -391,6 +390,7 @@ newtype ServerStore i a =
   deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
 instance (NFData i, NFData a) => NFData (ServerStore i a)
+
 instance (Validity i, Validity a, Show i, Show a, Ord i, Ord a) => Validity (ServerStore i a)
 
 -- | An empty central store to start with
