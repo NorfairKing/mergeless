@@ -97,7 +97,33 @@ serverSyncSpec ::
   -> (UTCTime -> ServerStore i a -> SyncRequest i a -> m (SyncResponse i a, ServerStore i a))
   -> Spec
 serverSyncSpec eval func = do
-  describe "Single client" $
+  describe "Single client" $ do
+    describe "Single-item" $ do
+      it "succesfully downloads a single item from the server for an empty client" $
+        forAllValid $ \u ->
+          forAllValid $ \i ->
+            evalDM $ do
+              let sstore1 = emptyServerStore {serverStoreItems = M.singleton u i}
+              let cstore1 = emptyClientStore
+              let req = makeSyncRequest cstore1
+              (resp, sstore2) <- processServerSync @UUID @Int genD sstore1 req
+              let cstore2 = mergeSyncResponse cstore1 resp
+              lift $ do
+                sstore2 `shouldBe` sstore1
+                clientStoreSynced cstore2 `shouldBe` serverStoreItems sstore2
+      it "succesfully uploads a single item to the server for an empty server" $
+        forAllValid $ \c ->
+          forAllValid $ \i ->
+            evalDM $ do
+              let cstore1 = emptyClientStore {clientStoreAdded = M.singleton c i}
+              let sstore1 = emptyServerStore
+              let req = makeSyncRequest cstore1
+              (resp, sstore2) <- processServerSync @UUID @Int genD sstore1 req
+              let cstore2 = mergeSyncResponse cstore1 resp
+              lift $ do
+                sort (M.elems (M.map syncedValue (clientStoreSynced cstore2))) `shouldBe`
+                  sort (M.elems $ M.map addedValue $ M.singleton c i)
+                clientStoreSynced cstore2 `shouldBe` serverStoreItems sstore2
     describe "Multi-item" $ do
       it "succesfully downloads everything from the server for an empty client" $
         forAllValid $ \sstore1 ->
