@@ -1,16 +1,10 @@
-resolver: lts-13.19
+resolver: lts-14.18
 packages:
   - mergeless
   - genvalidity-mergeless
 extra-deps:
-  - git: https://github.com/NorfairKing/typed-uuid
-    commit: 155c9ec880ca1c12f7dd8a8468b3626de8164823
-    subdirs:
-      - typed-uuid
-      - genvalidity-typed-uuid
-        
-  - git: https://github.com/NorfairKing/validity
-    commit: 8a13a23696115845133d87118b81c47fa1f9b04b
+  - github: NorfairKing/validity
+    commit: a7be852cea9292ef2a618cb88ff823a53d926318
     subdirs:
       - validity
       - validity-containers
@@ -19,6 +13,7 @@ extra-deps:
       - validity-uuid
       - genvalidity
       - genvalidity-containers
+      - genvalidity-criterion
       - genvalidity-hspec
       - genvalidity-hspec-aeson
       - genvalidity-property
