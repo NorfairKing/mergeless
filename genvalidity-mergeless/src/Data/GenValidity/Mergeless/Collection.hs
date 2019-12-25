@@ -29,7 +29,13 @@ instance (GenUnchecked i, GenUnchecked a, Show i, Show a, Ord i, Ord a) =>
          GenUnchecked (ClientStore i a)
 
 instance (GenValid i, GenValid a, Show i, Show a, Ord i, Ord a) => GenValid (ClientStore i a) where
-  genValid = genValidStructurally
+  genValid = do
+    identifiers <- genValid
+    (s1, s2) <- splitSet identifiers
+    clientStoreAdded <- genValid
+    clientStoreSynced <- mapWithIds s1
+    let clientStoreDeleted = s2
+    pure ClientStore {..}
   shrinkValid = shrinkValidStructurally
 
 instance (GenUnchecked i, GenUnchecked a, Show i, Show a, GenInvalid i, GenInvalid a, Ord i, Ord a) =>
@@ -39,7 +45,13 @@ instance (GenUnchecked i, GenUnchecked a, Show i, Show a, Ord i, Ord a) =>
          GenUnchecked (SyncRequest i a)
 
 instance (GenValid i, GenValid a, Show i, Show a, Ord i, Ord a) => GenValid (SyncRequest i a) where
-  genValid = genValidStructurally
+  genValid = do
+    identifiers <- genValid
+    (s1, s2) <- splitSet identifiers
+    syncRequestAdded <- genValid
+    let syncRequestSynced = s1
+    let syncRequestDeleted = s2
+    pure SyncRequest {..}
   shrinkValid = shrinkValidStructurally
 
 instance (GenUnchecked i, GenUnchecked a, Show i, Show a, GenInvalid i, GenInvalid a, Ord i, Ord a) =>
@@ -50,7 +62,7 @@ instance (GenUnchecked i, GenUnchecked a, Show i, Show a, Ord i, Ord a) =>
 
 instance (GenValid i, GenValid a, Show i, Show a, Ord i, Ord a) => GenValid (SyncResponse i a) where
   genValid = do
-    identifiers <- scale (* 4) genValid
+    identifiers <- genValid
     (s1, s2) <- splitSet identifiers
     (s3, s4) <- splitSet s1
     (s5, s6) <- splitSet s2
