@@ -12,17 +12,12 @@ module Data.Mergeless.CollectionSpec
 import Data.Functor.Identity
 import Data.Int (Int)
 import Data.List
-import Data.Map (Map)
 import qualified Data.Map.Strict as M
 import Data.Ord
 import qualified Data.Set as S
-import Data.Set (Set)
 import Data.Time
-import qualified Data.UUID as UUID
-import qualified Data.UUID.V4 as UUID
 import GHC.Generics (Generic)
 import System.Random
-import Text.Show.Pretty
 
 import Control.Monad.State
 
@@ -31,7 +26,7 @@ import Test.QuickCheck
 import Test.Validity
 import Test.Validity.Aeson
 
-import Data.GenValidity.Mergeless.Collection
+import Data.GenValidity.Mergeless.Collection ()
 import Data.GenValidity.UUID ()
 import Data.Mergeless.Collection
 import Data.Mergeless.Item
@@ -91,15 +86,14 @@ spec = do
                 let cstore1 =
                       emptyClientStore
                         { clientStoreAdded =
-                            M.singleton cid (Added {addedValue = (a :: Int), addedCreated = at})
+                            M.singleton cid (Added {addedValue = a :: Int, addedCreated = at})
                         }
                     resp =
                       emptySyncResponse
                         { syncResponseClientAdded =
                             M.singleton
                               cid
-                              (ClientAddition
-                                 {clientAdditionId = (u :: Int), clientAdditionTime = st})
+                              (ClientAddition {clientAdditionId = u :: Int, clientAdditionTime = st})
                         }
                     cstore2 = mergeSyncResponse cstore1 resp
                 clientStoreSynced cstore2 `shouldBe`
@@ -110,7 +104,7 @@ spec = do
           let cs' = mergeSyncResponse @Int @Int cs sr
           clientStoreDeleted cs' `shouldBe`
             (clientStoreDeleted cs `S.difference` syncResponseClientDeleted sr)
-  describe "processServerSyncWith" $ do
+  describe "processServerSyncWith" $
     describe "deterministic UUIDs" $ serverSyncSpec @Int evalD $ processServerSyncWith genD
 
 serverSyncSpec ::
@@ -435,7 +429,7 @@ serverSyncSpec eval func = do
         forAll (genValid `suchThat` (>= synct1)) $ \synct2 ->
           forAllValid $ \central1 ->
             forAllValid $ \local1 -> do
-              let ((local2, local3), (central2, central3)) =
+              let ((l2, l3), (c2, c3)) =
                     eval $ do
                       let sreq1 = makeSyncRequest local1
                       (sresp1, central2) <- func synct1 central1 sreq1
@@ -444,8 +438,8 @@ serverSyncSpec eval func = do
                       (sresp2, central3) <- func synct2 central2 sreq2
                       let local3 = mergeSyncResponse local2 sresp2
                       pure ((local2, local3), (central2, central3))
-              local2 `shouldBe` local3
-              central2 `shouldBe` central3
+              l2 `shouldBe` l3
+              c2 `shouldBe` c3
 
 newtype D m a =
   D
@@ -470,27 +464,3 @@ genD = do
   let (u, r') = random r
   put r'
   pure u
-
-newtype I a =
-  I
-    { unI :: State Word a
-    }
-  deriving (Generic, Functor, Applicative, Monad, MonadState Word)
-
-evalI :: I a -> a
-evalI i = fst $ runI i 0
-
-runI :: I a -> Word -> (a, Word)
-runI = runState . unI
-
-genI :: I Word
-genI = do
-  i <- get
-  modify succ
-  pure i
-
-diffSet :: Ord i => Map i a -> Set i -> Map i a
-diffSet m s = m `M.difference` toMap s
-
-toMap :: Set i -> Map i ()
-toMap = M.fromSet (const ())

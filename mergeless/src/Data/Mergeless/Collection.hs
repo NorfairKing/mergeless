@@ -83,13 +83,11 @@ import Data.Aeson
 import Data.List
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
-import Data.Maybe
 import qualified Data.Set as S
 import Data.Set (Set)
 import Data.Time
 import Data.Word
 
-import Control.Applicative
 import Control.DeepSeq
 import Control.Monad.IO.Class
 import Control.Monad.State.Strict
@@ -352,11 +350,10 @@ data ServerSyncProcessor i a m =
 -- You can use this function with deterministically-random identifiers or incrementing identifiers.
 processServerSyncCustom ::
      forall i a m. (Ord i, Ord a, Monad m)
-  => UTCTime
-  -> ServerSyncProcessor i a m
+  => ServerSyncProcessor i a m
   -> SyncRequest i a
   -> m (SyncResponse i a)
-processServerSyncCustom now ServerSyncProcessor {..} SyncRequest {..} = do
+processServerSyncCustom ServerSyncProcessor {..} SyncRequest {..} = do
   deletedFromClient <- deleteUndeleted
         -- First we delete the items that were deleted locally but not yet remotely.
         -- Then we find the items that have been deleted remotely but not locally
@@ -423,7 +420,6 @@ processServerSyncWith ::
 processServerSyncWith genUuid now cs sr =
   flip runStateT cs $
   processServerSyncCustom
-    now
     ServerSyncProcessor
       { serverSyncProcessorDeleteMany = deleteMany
       , serverSyncProcessorQueryNoLongerSynced = queryNoLongerSynced
@@ -445,7 +441,7 @@ processServerSyncWith genUuid now cs sr =
     insertMany ::
          Map ClientId (Added a) -> StateT (ServerStore i a) m (Map ClientId (ClientAddition i))
     insertMany =
-      M.traverseWithKey $ \cid a -> do
+      traverse $ \a -> do
         u <- lift genUuid
         let s = addedToSynced now a
         ins u s

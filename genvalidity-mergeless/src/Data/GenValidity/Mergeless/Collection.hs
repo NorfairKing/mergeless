@@ -16,7 +16,7 @@ import Data.GenValidity.Containers ()
 import Data.GenValidity.Time ()
 import Test.QuickCheck
 
-import Data.GenValidity.Mergeless.Item
+import Data.GenValidity.Mergeless.Item ()
 import Data.Mergeless
 
 instance GenUnchecked ClientId

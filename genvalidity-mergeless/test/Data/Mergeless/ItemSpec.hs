@@ -1,32 +1,18 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Data.Mergeless.ItemSpec
   ( spec
   ) where
 
 import Data.Int (Int)
-import qualified Data.Map.Strict as M
-import qualified Data.Set as S
-import Data.Time
-import qualified Data.UUID as UUID
-import GHC.Generics (Generic)
-import System.Random
-import Text.Show.Pretty
-
-import Control.Monad.State
 
 import Test.Hspec
-import Test.QuickCheck
 import Test.Validity
 import Test.Validity.Aeson
 
 import Data.GenValidity.Mergeless.Item ()
 import Data.GenValidity.UUID ()
 import Data.Mergeless.Item
-import Data.UUID
-import Data.UUID.V4
 
 {-# ANN module ("HLint: ignore Reduce duplication" :: String) #-}
 
@@ -132,40 +118,3 @@ spec = do
                     ci3 = mergeItemSyncResponse ci2 resp2
                 ci3 `shouldBe` ci2
                 si3 `shouldBe` si2
-
-newtype D a =
-  D
-    { unD :: State StdGen a
-    }
-  deriving (Generic, Functor, Applicative, Monad, MonadState StdGen)
-
-evalD :: D a -> a
-evalD d = fst $ runD d $ mkStdGen 42
-
-runD :: D a -> StdGen -> (a, StdGen)
-runD = runState . unD
-
-genD :: D UUID
-genD = do
-  r <- get
-  let (u, r') = random r
-  put r'
-  pure u
-
-newtype I a =
-  I
-    { unI :: State Word a
-    }
-  deriving (Generic, Functor, Applicative, Monad, MonadState Word)
-
-evalI :: I a -> a
-evalI i = fst $ runI i 0
-
-runI :: I a -> Word -> (a, Word)
-runI = runState . unI
-
-genI :: I Word
-genI = do
-  i <- get
-  modify succ
-  pure i

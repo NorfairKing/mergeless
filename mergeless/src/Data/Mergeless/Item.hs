@@ -6,17 +6,8 @@
 
 module Data.Mergeless.Item where
 
-import Control.Applicative
 import Control.DeepSeq
-import Control.Monad.IO.Class
-import Control.Monad.State.Strict
 import Data.Aeson
-import Data.List
-import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
-import Data.Maybe
-import qualified Data.Set as S
-import Data.Set (Set)
 import Data.Time
 import Data.Validity
 import Data.Validity.Containers ()
@@ -138,7 +129,7 @@ mergeItemSyncResponse ci sr =
             -- This can only happen if two clients make the item at the same time.
             -- In practice, with named items in a collection, this will never happen.
             _ -> mismatch
-        ClientSynced s ->
+        ClientSynced _ ->
           case sr of
             ItemSyncResponseInSyncFull -> ci -- No change
             ItemSyncResponseServerDeleted -> ClientEmpty

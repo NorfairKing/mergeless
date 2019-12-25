@@ -1,15 +1,11 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Data.GenValidity.Mergeless.Item where
 
-import qualified Data.Set as S
-
 import Data.GenValidity
 import Data.GenValidity.Containers ()
 import Data.GenValidity.Time ()
-import Test.QuickCheck
 
 import Data.Mergeless.Item
 
