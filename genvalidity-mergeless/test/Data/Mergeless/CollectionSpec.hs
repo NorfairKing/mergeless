@@ -41,20 +41,12 @@ import Data.UUID
 
 spec :: Spec
 spec = do
-  eqSpecOnValid @(ClientStore Int Int)
-  ordSpecOnValid @(ClientStore Int Int)
   genValidSpec @(ClientStore Int Int)
   jsonSpecOnValid @(ClientStore Int Int)
-  eqSpecOnValid @(SyncRequest Int Int)
-  ordSpecOnValid @(SyncRequest Int Int)
   genValidSpec @(SyncRequest Int Int)
   jsonSpecOnValid @(SyncRequest Int Int)
-  eqSpecOnValid @(SyncResponse Int Int)
-  ordSpecOnValid @(SyncResponse Int Int)
   genValidSpec @(SyncResponse Int Int)
   jsonSpecOnValid @(SyncResponse Int Int)
-  eqSpecOnValid @(ServerStore Int Int)
-  ordSpecOnValid @(ServerStore Int Int)
   genValidSpec @(ServerStore Int Int)
   jsonSpecOnValid @(ServerStore Int Int)
   describe "emptyStore" $ it "is valid" $ shouldBeValid (emptyClientStore @Int @Int)
