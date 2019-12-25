@@ -59,6 +59,10 @@ module Data.Mergeless.Collection
     -- * Client-side Synchronisation
   , makeSyncRequest
   , mergeSyncResponse
+  , addRemotelyAddedItems
+  , addAddedItems
+  , deleteItemsToBeDeletedLocally
+  , deleteLocalUndeletedItems
     -- * Server-side Synchronisation
     -- ** General synchronisation
   , ServerSyncProcessor(..)
