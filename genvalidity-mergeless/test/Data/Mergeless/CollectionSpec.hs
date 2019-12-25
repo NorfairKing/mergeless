@@ -96,7 +96,6 @@ spec = do
   describe "processServerSyncWith" $
    do
     describe "deterministic UUIDs" $ serverSyncSpec @Int evalD $ processServerSyncWith genD
-    -- describe "incrementing words" $ serverSyncSpec @Int evalI $ processServerSyncWith genI
 
 serverSyncSpec ::
      forall a i m. (Show i, Ord i, GenValid i, Show a, Ord a, GenValid a, Monad m)
