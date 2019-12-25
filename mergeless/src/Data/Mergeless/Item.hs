@@ -13,6 +13,7 @@ import Control.Monad.IO.Class
 import Control.Monad.State.Strict
 import Data.Aeson
 import Data.List
+import Control.DeepSeq
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Maybe
@@ -36,6 +37,8 @@ data Added a =
 
 instance Validity a => Validity (Added a)
 
+instance NFData a => NFData (Added a)
+
 instance FromJSON a => FromJSON (Added a) where
   parseJSON = withObject "Added" $ \o -> Added <$> o .: "value" <*> o .: "added"
 
@@ -51,6 +54,8 @@ data Synced a =
   deriving (Show, Eq, Ord, Generic)
 
 instance Validity a => Validity (Synced a)
+
+instance NFData a => NFData (Synced a)
 
 instance FromJSON a => FromJSON (Synced a) where
   parseJSON =
@@ -69,6 +74,8 @@ data ClientItem a
 
 instance Validity a => Validity (ClientItem a)
 
+instance NFData a => NFData (ClientItem a)
+
 instance FromJSON a => FromJSON (ClientItem a)
 
 instance ToJSON a => ToJSON (ClientItem a)
@@ -82,6 +89,8 @@ data ItemSyncRequest a
   deriving (Show, Eq, Ord, Generic)
 
 instance Validity a => Validity (ItemSyncRequest a)
+
+instance NFData a => NFData (ItemSyncRequest a)
 
 instance FromJSON a => FromJSON (ItemSyncRequest a)
 
@@ -106,6 +115,8 @@ data ItemSyncResponse a
   deriving (Show, Eq, Ord, Generic)
 
 instance Validity a => Validity (ItemSyncResponse a)
+
+instance NFData a => NFData (ItemSyncResponse a)
 
 instance FromJSON a => FromJSON (ItemSyncResponse a)
 
@@ -146,6 +157,8 @@ data ServerItem a
   deriving (Show, Eq, Ord, Generic)
 
 instance Validity a => Validity (ServerItem a)
+
+instance NFData a => NFData (ServerItem a)
 
 instance FromJSON a => FromJSON (ServerItem a)
 

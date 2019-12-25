@@ -97,6 +97,19 @@ packages:
     url: https://github.com/NorfairKing/validity/archive/a7be852cea9292ef2a618cb88ff823a53d926318.tar.gz
 - completed:
     size: 94495
+    subdir: genvalidity-criterion
+    url: https://github.com/NorfairKing/validity/archive/a7be852cea9292ef2a618cb88ff823a53d926318.tar.gz
+    name: genvalidity-criterion
+    version: 0.0.0.0
+    sha256: 660b4a24fbd417af53bca0368ec85bb19ac13690718f9a251d1443ac72afef4e
+    pantry-tree:
+      size: 283
+      sha256: bea96f2daf785e8cd9bba94386ceb1e1275fbb5e1161d416fc2379927f2a03f3
+  original:
+    subdir: genvalidity-criterion
+    url: https://github.com/NorfairKing/validity/archive/a7be852cea9292ef2a618cb88ff823a53d926318.tar.gz
+- completed:
+    size: 94495
     subdir: genvalidity-hspec
     url: https://github.com/NorfairKing/validity/archive/a7be852cea9292ef2a618cb88ff823a53d926318.tar.gz
     name: genvalidity-hspec

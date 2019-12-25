@@ -47,3 +47,18 @@ tests:
       - random
       - time
       - uuid
+
+benchmarks:
+  genvalidity-mergeless-bench:
+    main:                Bench.hs
+    source-dirs:         bench
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+      - base >= 4.7 && < 5
+      - criterion
+      - genvalidity-criterion
+      - genvalidity-mergeless
+      - mergeless

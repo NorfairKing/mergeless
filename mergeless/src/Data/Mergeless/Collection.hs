@@ -91,6 +91,7 @@ import Data.Time
 import Data.Word
 
 import Control.Applicative
+import Control.DeepSeq
 import Control.Monad.IO.Class
 import Control.Monad.State.Strict
 
@@ -109,6 +110,8 @@ newtype ClientId =
 
 instance Validity ClientId
 
+instance NFData ClientId
+
 -- | A client-side store of items with Id's of type @i@ and values of type @a@
 data ClientStore i a =
   ClientStore
@@ -117,6 +120,8 @@ data ClientStore i a =
     , clientStoreDeleted :: !(Set i)
     }
   deriving (Show, Eq, Ord, Generic)
+
+instance (NFData i, NFData a) => NFData (ClientStore i a)
 
 instance (Validity i, Validity a, Show i, Show a, Ord i, Ord a) => Validity (ClientStore i a) where
   validate cs@ClientStore {..} =
@@ -182,6 +187,8 @@ data SyncRequest i a =
     }
   deriving (Show, Eq, Ord, Generic)
 
+instance (NFData i, NFData a) => NFData (SyncRequest i a)
+
 instance (Validity i, Validity a, Ord i, Ord a) => Validity (SyncRequest i a) where
   validate sr@SyncRequest {..} =
     mconcat
@@ -223,6 +230,8 @@ data SyncResponse i a =
     , syncResponseServerDeleted :: !(Set i)
     }
   deriving (Show, Eq, Ord, Generic)
+
+instance (NFData i, NFData a) => NFData (SyncResponse i a)
 
 instance (Validity i, Validity a, Show i, Show a, Ord i, Ord a) => Validity (SyncResponse i a) where
   validate sr@SyncResponse {..} =
@@ -270,6 +279,8 @@ data ClientAddition i =
   deriving (Show, Eq, Ord, Generic)
 
 instance Validity i => Validity (ClientAddition i)
+
+instance NFData i => NFData (ClientAddition i)
 
 instance FromJSON i => FromJSON (ClientAddition i) where
   parseJSON = withObject "ClientAddition" $ \o -> ClientAddition <$> o .: "id" <*> o .: "time"
@@ -379,6 +390,7 @@ newtype ServerStore i a =
     }
   deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
+instance (NFData i, NFData a) => NFData (ServerStore i a)
 instance (Validity i, Validity a, Show i, Show a, Ord i, Ord a) => Validity (ServerStore i a)
 
 -- | An empty central store to start with
@@ -425,7 +437,7 @@ processServerSyncWith genUuid now cs sr =
       modC (`diffSet` s)
       pure s
     queryNoLongerSynced :: Set i -> StateT (ServerStore i a) m (Set i)
-    queryNoLongerSynced s = query ((s `S.difference`). M.keysSet)
+    queryNoLongerSynced s = query ((s `S.difference`) . M.keysSet)
     queryNewRemote :: Set i -> StateT (ServerStore i a) m (Map i (Synced a))
     queryNewRemote s = query (`diffSet` s)
     query :: (Map i (Synced a) -> b) -> StateT (ServerStore i a) m b

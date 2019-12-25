@@ -13,6 +13,7 @@ extra-deps:
       - validity-uuid
       - genvalidity
       - genvalidity-containers
+      - genvalidity-criterion
       - genvalidity-hspec
       - genvalidity-hspec-aeson
       - genvalidity-property
