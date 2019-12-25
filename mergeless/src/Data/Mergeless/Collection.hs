@@ -329,7 +329,7 @@ data ServerSyncProcessor i a m =
     { serverSyncProcessorDeleteMany :: Set i -> m (Set i)
       -- ^ Delete the items with an identifier in the given set, return the set that was indeed deleted or did not exist.
       -- In particular, return the identifiers of the items that the client should forget about.
-    , serverSyncProcessorQueryNotSynced :: Set i -> m (Set i) -- ^ Query the identifiers of the items that are in store, but not in the given set.
+    , serverSyncProcessorQueryNoLongerSynced :: Set i -> m (Set i) -- ^ Query the identifiers of the items that are in the given set but not in the store.
     , serverSyncProcessorQueryNewRemote :: Set i -> m (Map i (Synced a)) -- ^ Query the items that are in store, but not in the given set.
     , serverSyncProcessorInsertMany :: Map ClientId (Added a) -> m (Map ClientId (ClientAddition i)) -- ^ Insert a set of items into the store.
     }
@@ -366,7 +366,7 @@ processServerSyncCustom now ServerSyncProcessor {..} SyncRequest {..} = do
     deleteUndeleted :: m (Set i)
     deleteUndeleted = serverSyncProcessorDeleteMany syncRequestDeleted
     syncItemsToBeDeletedLocally :: m (Set i)
-    syncItemsToBeDeletedLocally = serverSyncProcessorQueryNotSynced syncRequestSynced
+    syncItemsToBeDeletedLocally = serverSyncProcessorQueryNoLongerSynced syncRequestSynced
     syncNewRemoteItems :: m (Map i (Synced a))
     syncNewRemoteItems = serverSyncProcessorQueryNewRemote syncRequestSynced
     syncAddedItems :: m (Map ClientId (ClientAddition i))
@@ -414,7 +414,7 @@ processServerSyncWith genUuid now cs sr =
     now
     ServerSyncProcessor
       { serverSyncProcessorDeleteMany = deleteMany
-      , serverSyncProcessorQueryNotSynced = queryNotSynced
+      , serverSyncProcessorQueryNoLongerSynced = queryNoLongerSynced
       , serverSyncProcessorQueryNewRemote = queryNewRemote
       , serverSyncProcessorInsertMany = insertMany
       }
@@ -424,8 +424,8 @@ processServerSyncWith genUuid now cs sr =
     deleteMany s = do
       modC (`diffSet` s)
       pure s
-    queryNotSynced :: Set i -> StateT (ServerStore i a) m (Set i)
-    queryNotSynced s = query (M.keysSet . (`diffSet` s))
+    queryNoLongerSynced :: Set i -> StateT (ServerStore i a) m (Set i)
+    queryNoLongerSynced s = query ((s `S.difference`). M.keysSet)
     queryNewRemote :: Set i -> StateT (ServerStore i a) m (Map i (Synced a))
     queryNewRemote s = query (`diffSet` s)
     query :: (Map i (Synced a) -> b) -> StateT (ServerStore i a) m b

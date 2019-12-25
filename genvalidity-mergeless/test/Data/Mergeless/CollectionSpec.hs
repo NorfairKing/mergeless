@@ -187,11 +187,12 @@ serverSyncSpec eval func = do
       it "successfully syncs an addition accross to a second client" $
         forAllValid $ \i ->
           evalDM $ do
-            let cAstore1 = emptyClientStore {clientStoreAdded = M.singleton (ClientId 0) i}
+            let cAstore1 =
+                  (emptyClientStore @UUID @Int) {clientStoreAdded = M.singleton (ClientId 0) i}
               -- Client B is empty
-            let cBstore1 = emptyClientStore
+            let cBstore1 = emptyClientStore @UUID @Int
               -- The server is empty
-            let sstore1 = emptyServerStore
+            let sstore1 = emptyServerStore @UUID @Int
               -- Client A makes sync request 1
             let req1 = makeSyncRequest cAstore1
               -- The server processes sync request 1
@@ -211,6 +212,7 @@ serverSyncSpec eval func = do
                 lift $ do
                   resp2 `shouldBe` (emptySyncResponse {syncResponseServerAdded = items})
                   sstore3 `shouldBe` sstore2
+                --  pPrint cBstore2
                   -- Client B merges the response
                 let cBstore2 = mergeSyncResponse cBstore1 resp2
                 lift $ cBstore2 `shouldBe` (emptyClientStore {clientStoreSynced = items})
