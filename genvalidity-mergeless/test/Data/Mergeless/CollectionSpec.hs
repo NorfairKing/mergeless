@@ -82,12 +82,34 @@ spec = do
     it "produces valid sync requests" $ producesValidsOnValids (makeSyncRequest @Int @Int)
   describe "mergeSyncResponse" $ do
     it "produces valid sync stores" $ producesValidsOnValids2 (mergeSyncResponse @Int @Int)
+    it "adds the single item that the server tells it to add to an empty client store" $
+      forAllValid $ \cid ->
+        forAllValid $ \a ->
+          forAllValid $ \at ->
+            forAllValid $ \u ->
+              forAllValid $ \st -> do
+                let cstore1 =
+                      emptyClientStore
+                        { clientStoreAdded =
+                            M.singleton cid (Added {addedValue = (a :: Int), addedCreated = at})
+                        }
+                    resp =
+                      emptySyncResponse
+                        { syncResponseClientAdded =
+                            M.singleton
+                              cid
+                              (ClientAddition
+                                 {clientAdditionId = (u :: Int), clientAdditionTime = st})
+                        }
+                    cstore2 = mergeSyncResponse cstore1 resp
+                clientStoreSynced cstore2 `shouldBe`
+                  M.singleton u (Synced {syncedValue = a, syncedCreated = at, syncedSynced = st})
     it "deletes items that the server instructed to be deleted" $
       forAllValid $ \cs ->
-        forAllValid $ \sr ->
+        forAllValid $ \sr -> do
           let cs' = mergeSyncResponse @Int @Int cs sr
-           in clientStoreDeleted cs' `shouldBe`
-              (clientStoreDeleted cs `S.difference` syncResponseClientDeleted sr)
+          clientStoreDeleted cs' `shouldBe`
+            (clientStoreDeleted cs `S.difference` syncResponseClientDeleted sr)
   describe "processServerSyncWith" $ do
     describe "deterministic UUIDs" $ serverSyncSpec @Int evalD $ processServerSyncWith genD
 
@@ -115,15 +137,15 @@ serverSyncSpec eval func = do
         forAllValid $ \c ->
           forAllValid $ \i ->
             evalDM $ do
-              let cstore1 = emptyClientStore {clientStoreAdded = M.singleton c i}
-              let sstore1 = emptyServerStore
+              let cstore1 = (emptyClientStore @UUID @Int) {clientStoreAdded = M.singleton c i}
+              let sstore1 = emptyServerStore @UUID @Int
               let req = makeSyncRequest cstore1
               (resp, sstore2) <- processServerSync @UUID @Int genD sstore1 req
               let cstore2 = mergeSyncResponse cstore1 resp
               lift $ do
+                clientStoreSynced cstore2 `shouldBe` serverStoreItems sstore2
                 sort (M.elems (M.map syncedValue (clientStoreSynced cstore2))) `shouldBe`
                   sort (M.elems $ M.map addedValue $ M.singleton c i)
-                clientStoreSynced cstore2 `shouldBe` serverStoreItems sstore2
     describe "Multi-item" $ do
       it "succesfully downloads everything from the server for an empty client" $
         forAllValid $ \sstore1 ->
@@ -144,9 +166,9 @@ serverSyncSpec eval func = do
             (resp, sstore2) <- processServerSync @UUID @Int genD sstore1 req
             let cstore2 = mergeSyncResponse cstore1 resp
             lift $ do
+              clientStoreSynced cstore2 `shouldBe` serverStoreItems sstore2
               sort (M.elems (M.map syncedValue (clientStoreSynced cstore2))) `shouldBe`
                 sort (M.elems $ M.map addedValue items)
-              clientStoreSynced cstore2 `shouldBe` serverStoreItems sstore2
       it "is idempotent with one client" $
         forAllValid $ \cstore1 ->
           forAllValid $ \sstore1 ->

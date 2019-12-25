@@ -314,7 +314,7 @@ addAddedItems addedItems cs =
             let s = addedToSynced clientAdditionTime a
              in (M.delete cid added, M.insert clientAdditionId s synced)
       (newAdded, newSynced) = M.foldlWithKey go (oldAdded, oldSynced) addedItems
-   in cs {clientStoreAdded = newAdded}
+   in cs {clientStoreAdded = newAdded, clientStoreSynced = newSynced}
 
 deleteItemsToBeDeletedLocally :: (Ord i, Ord a) => Set i -> ClientStore i a -> ClientStore i a
 deleteItemsToBeDeletedLocally toBeDeletedLocally cs =
