@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -8,6 +9,7 @@ module Data.Mergeless.CollectionSpec
   ( spec
   ) where
 
+import Data.Functor.Identity
 import Data.Int (Int)
 import Data.List
 import Data.Map (Map)
@@ -32,6 +34,7 @@ import Test.Validity.Aeson
 import Data.GenValidity.Mergeless.Collection
 import Data.GenValidity.UUID ()
 import Data.Mergeless.Collection
+import Data.Mergeless.Item
 import Data.UUID
 
 {-# ANN module ("HLint: ignore Reduce duplication" :: String) #-}
@@ -93,8 +96,7 @@ spec = do
           let cs' = mergeSyncResponse @Int @Int cs sr
            in clientStoreDeleted cs' `shouldBe`
               (clientStoreDeleted cs `S.difference` syncResponseClientDeleted sr)
-  describe "processServerSyncWith" $
-   do
+  describe "processServerSyncWith" $ do
     describe "deterministic UUIDs" $ serverSyncSpec @Int evalD $ processServerSyncWith genD
 
 serverSyncSpec ::
@@ -103,112 +105,154 @@ serverSyncSpec ::
   -> (UTCTime -> ServerStore i a -> SyncRequest i a -> m (SyncResponse i a, ServerStore i a))
   -> Spec
 serverSyncSpec eval func = do
-  it "makes no change if the sync request reflects the same local state with an empty sync response" $
-    forAllValid $ \synct ->
-      forAllValid $ \sis -> do
-        let cs = ServerStore sis
-        let (sr, cs') =
-              eval $
-              func synct cs $
-              SyncRequest
-                { syncRequestAdded = M.empty
-                , syncRequestSynced = M.keysSet sis
-                , syncRequestDeleted = S.empty
-                }
-        cs' `shouldBe` cs
-        sr `shouldBe`
-          SyncResponse
-            { syncResponseClientAdded = M.empty
-            , syncResponseClientDeleted = S.empty
-            , syncResponseServerAdded = M.empty
-            , syncResponseServerDeleted = S.empty
-            }
-  it "deletes the deleted items" $
-    forAllValid $ \synct ->
-      forAllValid $ \cs ->
-        forAllValid $ \sreq -> do
-          let (_, cs') = eval $ func synct cs sreq
-          syncRequestDeleted sreq `shouldSatisfy`
-            (not . any (`S.member` (M.keysSet $ serverStoreItems cs')))
-  it "returns the items that were added in the sync response" $
-    forAllValid $ \synct ->
-      forAllValid $ \cs ->
-        forAllValid $ \sreq -> do
-          let (sresp, _) = eval $ func synct cs sreq
-          M.keysSet (syncResponseClientAdded sresp) `shouldBe` M.keysSet (syncRequestAdded sreq)
-  it "returns the single added item" $
-    forAllValid $ \synct ->
-      forAllValid $ \cs ->
-        forAllValid $ \ai -> do
-          let (sresp, _) =
+  describe "Single client" $
+    describe "Multi-item" $ do
+      it "succesfully downloads everything from the server for an empty client" $
+        forAllValid $ \sstore1 ->
+          evalDM $ do
+            let cstore1 = emptyClientStore
+            let req = makeSyncRequest cstore1
+            (resp, sstore2) <- processServerSync @UUID @Int genD sstore1 req
+            let cstore2 = mergeSyncResponse cstore1 resp
+            lift $ do
+              sstore2 `shouldBe` sstore1
+              clientStoreSynced cstore2 `shouldBe` serverStoreItems sstore2
+      it "succesfully uploads everything to the server for an empty server" $
+        forAllValid $ \items ->
+          evalDM $ do
+            let cstore1 = emptyClientStore {clientStoreAdded = items}
+            let sstore1 = emptyServerStore
+            let req = makeSyncRequest cstore1
+            (resp, sstore2) <- processServerSync @UUID @Int genD sstore1 req
+            let cstore2 = mergeSyncResponse cstore1 resp
+            lift $ do
+              sort (M.elems (M.map syncedValue (clientStoreSynced cstore2))) `shouldBe`
+                sort (M.elems $ M.map addedValue items)
+              clientStoreSynced cstore2 `shouldBe` serverStoreItems sstore2
+      it "is idempotent with one client" $
+        forAllValid $ \cstore1 ->
+          forAllValid $ \sstore1 ->
+            evalDM $ do
+              let req1 = makeSyncRequest cstore1
+              (resp1, sstore2) <- processServerSync @UUID @Int genD sstore1 req1
+              let cstore2 = mergeSyncResponse cstore1 resp1
+                  req2 = makeSyncRequest cstore2
+              (resp2, sstore3) <- processServerSync genD sstore2 req2
+              let cstore3 = mergeSyncResponse cstore2 resp2
+              lift $ do
+                cstore2 `shouldBe` cstore3
+                sstore2 `shouldBe` sstore3
+  describe "Multiple clients" $ do
+    describe "Single-item" $ do
+      it "successfully syncs an addition accross to a second client" $
+        forAllValid $ \i ->
+          evalDM $ do
+            let cAstore1 = emptyClientStore {clientStoreAdded = M.singleton (ClientId 0) i}
+              -- Client B is empty
+            let cBstore1 = emptyClientStore
+              -- The server is empty
+            let sstore1 = emptyServerStore
+              -- Client A makes sync request 1
+            let req1 = makeSyncRequest cAstore1
+              -- The server processes sync request 1
+            (resp1, sstore2) <- processServerSync @UUID @Int genD sstore1 req1
+            let addedItems = syncResponseClientAdded resp1
+            case M.toList addedItems of
+              [(ClientId 0, ClientAddition {..})] -> do
+                let items = M.singleton clientAdditionId (addedToSynced clientAdditionTime i)
+                lift $ sstore2 `shouldBe` (ServerStore {serverStoreItems = items})
+                  -- Client A merges the response
+                let cAstore2 = mergeSyncResponse cAstore1 resp1
+                lift $ cAstore2 `shouldBe` (emptyClientStore {clientStoreSynced = items})
+                  -- Client B makes sync request 2
+                let req2 = makeSyncRequest cBstore1
+                  -- The server processes sync request 2
+                (resp2, sstore3) <- processServerSync genD sstore2 req2
+                lift $ do
+                  resp2 `shouldBe` (emptySyncResponse {syncResponseServerAdded = items})
+                  sstore3 `shouldBe` sstore2
+                  -- Client B merges the response
+                let cBstore2 = mergeSyncResponse cBstore1 resp2
+                lift $ cBstore2 `shouldBe` (emptyClientStore {clientStoreSynced = items})
+                  -- Client A and Client B now have the same store
+                lift $ cAstore2 `shouldBe` cBstore2
+              _ -> lift $ expectationFailure "Should have found exactly one added item."
+  xdescribe "old tests" $ do
+    it
+      "makes no change if the sync request reflects the same local state with an empty sync response" $
+      forAllValid $ \synct ->
+        forAllValid $ \sis -> do
+          let cs = ServerStore sis
+          let (sr, cs') =
                 eval $
-                func
-                  synct
-                  cs
-                  SyncRequest
-                    { syncRequestAdded = M.singleton (ClientId 0) ai
-                    , syncRequestSynced = S.empty
-                    , syncRequestDeleted = S.empty
-                    }
-          M.keysSet (syncResponseClientAdded sresp) `shouldBe` S.singleton (ClientId 0)
-  it "adds the items that were added" $
-    forAllValid $ \synct ->
-      forAllValid $ \cs ->
-        forAllValid $ \sreq -> do
-          let (_, cs') = eval $ func synct cs sreq
-          S.fromList (M.elems (M.map addedValue (syncRequestAdded sreq))) `shouldSatisfy`
-            (`S.isSubsetOf` (S.fromList $ M.elems $ M.map syncedValue $ serverStoreItems cs'))
-  it
-    "returns the single remotely added item if the sync request is empty and the central store has one item" $
-    forAllValid $ \synct ->
-      forAllValid $ \(uuid, si) -> do
-        let (sresp, _) =
-              eval $
-              func
-                synct
-                (ServerStore $ M.singleton uuid si)
+                func synct cs $
                 SyncRequest
                   { syncRequestAdded = M.empty
-                  , syncRequestSynced = S.empty
+                  , syncRequestSynced = M.keysSet sis
                   , syncRequestDeleted = S.empty
                   }
-        syncResponseServerAdded sresp `shouldBe` M.singleton uuid si
-  it "returns all remotely added items when no items are locally added or deleted" $
-    forAllValid $ \synct ->
-      forAllValid $ \ss ->
-        forAllValid $ \sis -> do
-          let (sresp, _) =
-                eval $
-                func
-                  synct
-                  ss
-                  SyncRequest
-                    { syncRequestAdded = M.empty
-                    , syncRequestSynced = sis
-                    , syncRequestDeleted = S.empty
-                    }
-          syncResponseServerAdded sresp `shouldBe` (serverStoreItems ss `diffSet` sis)
-  it "returns all remotely added items when no items are locally deleted" $
-    forAllValid $ \synct ->
-      forAllValid $ \ss ->
-        forAllValid $ \sis ->
-          forAllValid $ \ais -> do
+          cs' `shouldBe` cs
+          sr `shouldBe`
+            SyncResponse
+              { syncResponseClientAdded = M.empty
+              , syncResponseClientDeleted = S.empty
+              , syncResponseServerAdded = M.empty
+              , syncResponseServerDeleted = S.empty
+              }
+    it "deletes the deleted items" $
+      forAllValid $ \synct ->
+        forAllValid $ \cs ->
+          forAllValid $ \sreq -> do
+            let (_, cs') = eval $ func synct cs sreq
+            syncRequestDeleted sreq `shouldSatisfy`
+              (not . any (`S.member` (M.keysSet $ serverStoreItems cs')))
+    it "returns the items that were added in the sync response" $
+      forAllValid $ \synct ->
+        forAllValid $ \cs ->
+          forAllValid $ \sreq -> do
+            let (sresp, _) = eval $ func synct cs sreq
+            M.keysSet (syncResponseClientAdded sresp) `shouldBe` M.keysSet (syncRequestAdded sreq)
+    it "returns the single added item" $
+      forAllValid $ \synct ->
+        forAllValid $ \cs ->
+          forAllValid $ \ai -> do
             let (sresp, _) =
                   eval $
                   func
                     synct
-                    ss
+                    cs
                     SyncRequest
-                      { syncRequestAdded = ais
-                      , syncRequestSynced = sis
+                      { syncRequestAdded = M.singleton (ClientId 0) ai
+                      , syncRequestSynced = S.empty
                       , syncRequestDeleted = S.empty
                       }
-            syncResponseServerAdded sresp `shouldBe` (serverStoreItems ss `diffSet` sis)
-  it "returns all remotely added items that weren't deleted when no items are locally added" $
-    forAllValid $ \synct ->
-      forAllValid $ \ss ->
-        forAllValid $ \sis ->
-          forAllValid $ \dis -> do
+            M.keysSet (syncResponseClientAdded sresp) `shouldBe` S.singleton (ClientId 0)
+    it "adds the items that were added" $
+      forAllValid $ \synct ->
+        forAllValid $ \cs ->
+          forAllValid $ \sreq -> do
+            let (_, cs') = eval $ func synct cs sreq
+            S.fromList (M.elems (M.map addedValue (syncRequestAdded sreq))) `shouldSatisfy`
+              (`S.isSubsetOf` (S.fromList $ M.elems $ M.map syncedValue $ serverStoreItems cs'))
+    it
+      "returns the single remotely added item if the sync request is empty and the central store has one item" $
+      forAllValid $ \synct ->
+        forAllValid $ \(uuid, si) -> do
+          let (sresp, _) =
+                eval $
+                func
+                  synct
+                  (ServerStore $ M.singleton uuid si)
+                  SyncRequest
+                    { syncRequestAdded = M.empty
+                    , syncRequestSynced = S.empty
+                    , syncRequestDeleted = S.empty
+                    }
+          syncResponseServerAdded sresp `shouldBe` M.singleton uuid si
+    it "returns all remotely added items when no items are locally added or deleted" $
+      forAllValid $ \synct ->
+        forAllValid $ \ss ->
+          forAllValid $ \sis -> do
             let (sresp, _) =
                   eval $
                   func
@@ -217,67 +261,104 @@ serverSyncSpec eval func = do
                     SyncRequest
                       { syncRequestAdded = M.empty
                       , syncRequestSynced = sis
-                      , syncRequestDeleted = dis
+                      , syncRequestDeleted = S.empty
                       }
+            syncResponseServerAdded sresp `shouldBe` (serverStoreItems ss `diffSet` sis)
+    it "returns all remotely added items when no items are locally deleted" $
+      forAllValid $ \synct ->
+        forAllValid $ \ss ->
+          forAllValid $ \sis ->
+            forAllValid $ \ais -> do
+              let (sresp, _) =
+                    eval $
+                    func
+                      synct
+                      ss
+                      SyncRequest
+                        { syncRequestAdded = ais
+                        , syncRequestSynced = sis
+                        , syncRequestDeleted = S.empty
+                        }
+              syncResponseServerAdded sresp `shouldBe` (serverStoreItems ss `diffSet` sis)
+    it "returns all remotely added items that weren't deleted when no items are locally added" $
+      forAllValid $ \synct ->
+        forAllValid $ \ss ->
+          forAllValid $ \sis ->
+            forAllValid $ \dis -> do
+              let (sresp, _) =
+                    eval $
+                    func
+                      synct
+                      ss
+                      SyncRequest
+                        { syncRequestAdded = M.empty
+                        , syncRequestSynced = sis
+                        , syncRequestDeleted = dis
+                        }
+              syncResponseServerAdded sresp `shouldBe`
+                (serverStoreItems ss `diffSet` sis `diffSet` dis)
+    it "returns all remotely added items that weren't deleted" $
+      forAllValid $ \synct ->
+        forAllValid $ \ss ->
+          forAllValid $ \sreq -> do
+            let (sresp, _) = eval $ func synct ss sreq
             syncResponseServerAdded sresp `shouldBe`
-              (serverStoreItems ss `diffSet` sis `diffSet` dis)
-  it "returns all remotely added items that weren't deleted" $
-    forAllValid $ \synct ->
-      forAllValid $ \ss ->
-        forAllValid $ \sreq -> do
-          let (sresp, _) = eval $ func synct ss sreq
-          syncResponseServerAdded sresp `shouldBe`
-            (serverStoreItems ss `diffSet`
-             (syncRequestDeleted sreq `S.union` syncRequestSynced sreq))
-  it "produces valid results" $ producesValidsOnValids3 $ \synct cs sr -> eval $ func synct cs sr
-  it "successfully syncs two clients using a central store" $
-    forAllValid $ \store1 ->
-      forAllValid $ \(synct1, synct2, synct3) -> do
-        let (s1, s2) =
-              eval $ do
-                let central = ServerStore M.empty
-                let store2 = emptyClientStore
-                let sreq1 = makeSyncRequest store1
-                (sresp1, central') <- func synct1 central sreq1
-                let store1' = mergeSyncResponse store1 sresp1
-                let sreq2 = makeSyncRequest store2
-                (sresp2, central'') <- func synct2 central' sreq2
-                let store2' = mergeSyncResponse store2 sresp2
-                let sreq3 = makeSyncRequest store1'
-                (sresp3, _) <- func synct3 central'' sreq3
-                let store1'' = mergeSyncResponse store1' sresp3
-                pure (store1'', store2')
-        s1 `shouldBe` s2
-  it "ensures that syncing is idempotent" $
-    forAllValid $ \synct1 ->
-      forAll (genValid `suchThat` (>= synct1)) $ \synct2 ->
-        forAllValid $ \central1 ->
-          forAllValid $ \local1 -> do
-            let ((local2, local3), (central2, central3)) =
-                  eval $ do
-                    let sreq1 = makeSyncRequest local1
-                    (sresp1, central2) <- func synct1 central1 sreq1
-                    let local2 = mergeSyncResponse local1 sresp1
-                    let sreq2 = makeSyncRequest local2
-                    (sresp2, central3) <- func synct2 central2 sreq2
-                    let local3 = mergeSyncResponse local2 sresp2
-                    pure ((local2, local3), (central2, central3))
-            local2 `shouldBe` local3
-            central2 `shouldBe` central3
+              (serverStoreItems ss `diffSet`
+               (syncRequestDeleted sreq `S.union` syncRequestSynced sreq))
+    it "produces valid results" $ producesValidsOnValids3 $ \synct cs sr -> eval $ func synct cs sr
+    it "successfully syncs two clients using a central store" $
+      forAllValid $ \store1 ->
+        forAllValid $ \(synct1, synct2, synct3) -> do
+          let (s1, s2) =
+                eval $ do
+                  let central = ServerStore M.empty
+                  let store2 = emptyClientStore
+                  let sreq1 = makeSyncRequest store1
+                  (sresp1, central') <- func synct1 central sreq1
+                  let store1' = mergeSyncResponse store1 sresp1
+                  let sreq2 = makeSyncRequest store2
+                  (sresp2, central'') <- func synct2 central' sreq2
+                  let store2' = mergeSyncResponse store2 sresp2
+                  let sreq3 = makeSyncRequest store1'
+                  (sresp3, _) <- func synct3 central'' sreq3
+                  let store1'' = mergeSyncResponse store1' sresp3
+                  pure (store1'', store2')
+          s1 `shouldBe` s2
+    it "ensures that syncing is idempotent" $
+      forAllValid $ \synct1 ->
+        forAll (genValid `suchThat` (>= synct1)) $ \synct2 ->
+          forAllValid $ \central1 ->
+            forAllValid $ \local1 -> do
+              let ((local2, local3), (central2, central3)) =
+                    eval $ do
+                      let sreq1 = makeSyncRequest local1
+                      (sresp1, central2) <- func synct1 central1 sreq1
+                      let local2 = mergeSyncResponse local1 sresp1
+                      let sreq2 = makeSyncRequest local2
+                      (sresp2, central3) <- func synct2 central2 sreq2
+                      let local3 = mergeSyncResponse local2 sresp2
+                      pure ((local2, local3), (central2, central3))
+              local2 `shouldBe` local3
+              central2 `shouldBe` central3
 
-newtype D a =
+newtype D m a =
   D
-    { unD :: State StdGen a
+    { unD :: StateT StdGen m a
     }
-  deriving (Generic, Functor, Applicative, Monad, MonadState StdGen)
+  deriving (Generic, Functor, Applicative, Monad, MonadState StdGen, MonadTrans, MonadIO)
 
-evalD :: D a -> a
-evalD d = fst $ runD d $ mkStdGen 42
+evalD :: D Identity a -> a
+evalD = runIdentity . evalDM
 
-runD :: D a -> StdGen -> (a, StdGen)
-runD = runState . unD
+-- runD :: D Identity a -> StdGen -> (a, StdGen)
+-- runD = runState . unD
+evalDM :: Functor m => D m a -> m a
+evalDM d = fst <$> runDM d (mkStdGen 42)
 
-genD :: D UUID
+runDM :: D m a -> StdGen -> m (a, StdGen)
+runDM = runStateT . unD
+
+genD :: Monad m => D m UUID
 genD = do
   r <- get
   let (u, r') = random r

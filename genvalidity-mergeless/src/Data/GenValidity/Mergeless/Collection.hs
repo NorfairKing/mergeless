@@ -25,6 +25,12 @@ instance GenValid ClientId where
   genValid = genValidStructurally
   shrinkValid = shrinkValidStructurally
 
+instance GenUnchecked i => GenUnchecked (ClientAddition i)
+
+instance GenValid i => GenValid (ClientAddition i) where
+  genValid = genValidStructurallyWithoutExtraChecking
+  shrinkValid = shrinkValidStructurallyWithoutExtraFiltering
+
 instance (GenUnchecked i, GenUnchecked a, Show i, Show a, Ord i, Ord a) =>
          GenUnchecked (ClientStore i a)
 
@@ -71,7 +77,7 @@ instance (GenValid i, GenValid a, Show i, Show a, Ord i, Ord a) => GenValid (Syn
       forM (S.toList s3) $ \i -> do
         cid <- genValid -- TODO maybe we can find a way to not generate duplicate client ids and speed up this generator, but it's fine for now.
         t <- genValid
-        pure (cid, (i, t))
+        pure (cid, ClientAddition {clientAdditionId = i, clientAdditionTime = t})
     let syncResponseClientDeleted = s4
     syncResponseServerAdded <- mapWithIds s5
     let syncResponseServerDeleted = s6

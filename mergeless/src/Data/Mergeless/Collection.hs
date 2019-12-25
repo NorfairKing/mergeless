@@ -54,6 +54,8 @@ module Data.Mergeless.Collection
   , deleteSyncedFromClientStore
   , SyncRequest(..)
   , SyncResponse(..)
+  , emptySyncResponse
+  , ClientAddition(..)
     -- * Client-side Synchronisation
   , makeSyncRequest
   , mergeSyncResponse
@@ -211,7 +213,7 @@ makeSyncRequest ClientStore {..} =
 -- | A synchronisation response for items with identifiers of type @i@ and values of type @a@
 data SyncResponse i a =
   SyncResponse
-    { syncResponseClientAdded :: !(Map ClientId (i, UTCTime))
+    { syncResponseClientAdded :: !(Map ClientId (ClientAddition i))
     , syncResponseClientDeleted :: !(Set i)
     , syncResponseServerAdded :: !(Map i (Synced a))
     , syncResponseServerDeleted :: !(Set i)
@@ -225,7 +227,7 @@ instance (Validity i, Validity a, Show i, Show a, Ord i, Ord a) => Validity (Syn
       , declare "the sync response items have distinct uuids" $
         distinct $
         concat
-          [ M.elems $ M.map fst syncResponseClientAdded
+          [ M.elems $ M.map clientAdditionId syncResponseClientAdded
           , S.toList syncResponseClientDeleted
           , M.keys syncResponseServerAdded
           , S.toList syncResponseServerDeleted
@@ -247,6 +249,30 @@ instance (ToJSON i, ToJSONKey i, ToJSON a) => ToJSON (SyncResponse i a) where
       , "server-deleted" .= syncResponseServerDeleted
       ]
 
+emptySyncResponse :: SyncResponse i ia
+emptySyncResponse =
+  SyncResponse
+    { syncResponseClientAdded = M.empty
+    , syncResponseClientDeleted = S.empty
+    , syncResponseServerAdded = M.empty
+    , syncResponseServerDeleted = S.empty
+    }
+
+data ClientAddition i =
+  ClientAddition
+    { clientAdditionId :: i
+    , clientAdditionTime :: UTCTime
+    }
+  deriving (Show, Eq, Ord, Generic)
+
+instance Validity i => Validity (ClientAddition i)
+
+instance FromJSON i => FromJSON (ClientAddition i) where
+  parseJSON = withObject "ClientAddition" $ \o -> ClientAddition <$> o .: "id" <*> o .: "time"
+
+instance ToJSON i => ToJSON (ClientAddition i) where
+  toJSON ClientAddition {..} = object ["id" .= clientAdditionId, "time" .= clientAdditionTime]
+
 -- | Merge a synchronisation response back into a client-side store.
 mergeSyncResponse ::
      forall i a. (Ord i, Ord a)
@@ -266,7 +292,7 @@ addRemotelyAddedItems m cs =
 
 addAddedItems ::
      forall i a. (Ord i, Ord a)
-  => Map ClientId (i, UTCTime)
+  => Map ClientId (ClientAddition i)
   -> ClientStore i a
   -> ClientStore i a
 addAddedItems addedItems cs =
@@ -275,14 +301,14 @@ addAddedItems addedItems cs =
       go ::
            (Map ClientId (Added a), Map i (Synced a))
         -> ClientId
-        -> (i, UTCTime)
+        -> (ClientAddition i)
         -> (Map ClientId (Added a), Map i (Synced a))
-      go (added, synced) cid (i, st) =
+      go (added, synced) cid ClientAddition {..} =
         case M.lookup cid added of
           Nothing -> (added, synced)
           Just a ->
-            let s = addedToSynced st a
-             in (M.delete cid added, M.insert i s synced)
+            let s = addedToSynced clientAdditionTime a
+             in (M.delete cid added, M.insert clientAdditionId s synced)
       (newAdded, newSynced) = M.foldlWithKey go (oldAdded, oldSynced) addedItems
    in cs {clientStoreAdded = newAdded}
 
@@ -301,7 +327,7 @@ data ServerSyncProcessor i a m =
       -- In particular, return the identifiers of the items that the client should forget about.
     , serverSyncProcessorQueryNotSynced :: Set i -> m (Set i) -- ^ Query the identifiers of the items that are in store, but not in the given set.
     , serverSyncProcessorQueryNewRemote :: Set i -> m (Map i (Synced a)) -- ^ Query the items that are in store, but not in the given set.
-    , serverSyncProcessorInsertMany :: Map ClientId (Added a) -> m (Map ClientId (i, UTCTime)) -- ^ Insert a set of items into the store.
+    , serverSyncProcessorInsertMany :: Map ClientId (Added a) -> m (Map ClientId (ClientAddition i)) -- ^ Insert a set of items into the store.
     }
   deriving (Generic)
 
@@ -339,7 +365,7 @@ processServerSyncCustom now ServerSyncProcessor {..} SyncRequest {..} = do
     syncItemsToBeDeletedLocally = serverSyncProcessorQueryNotSynced syncRequestSynced
     syncNewRemoteItems :: m (Map i (Synced a))
     syncNewRemoteItems = serverSyncProcessorQueryNewRemote syncRequestSynced
-    syncAddedItems :: m (Map ClientId (i, UTCTime))
+    syncAddedItems :: m (Map ClientId (ClientAddition i))
     syncAddedItems = serverSyncProcessorInsertMany syncRequestAdded
 
 -- | A central store of items with identifiers of type @i@ and values of type @a@
@@ -400,13 +426,14 @@ processServerSyncWith genUuid now cs sr =
     queryNewRemote s = query (`diffSet` s)
     query :: (Map i (Synced a) -> b) -> StateT (ServerStore i a) m b
     query func = gets $ func . serverStoreItems
-    insertMany :: Map ClientId (Added a) -> StateT (ServerStore i a) m (Map ClientId (i, UTCTime))
+    insertMany ::
+         Map ClientId (Added a) -> StateT (ServerStore i a) m (Map ClientId (ClientAddition i))
     insertMany =
       M.traverseWithKey $ \cid a -> do
         u <- lift genUuid
         let s = addedToSynced now a
         ins u s
-        pure (u, now)
+        pure ClientAddition {clientAdditionId = u, clientAdditionTime = now}
     ins :: i -> Synced a -> StateT (ServerStore i a) m ()
     ins i val = modC $ M.insert i val
     modC :: (Map i (Synced a) -> Map i (Synced a)) -> StateT (ServerStore i a) m ()
