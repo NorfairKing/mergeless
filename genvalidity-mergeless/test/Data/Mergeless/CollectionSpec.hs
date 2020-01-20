@@ -47,7 +47,9 @@ spec = do
   describe "emptyStore" $ it "is valid" $ shouldBeValid (emptyClientStore @Int @Int)
   describe "storeSize" $ do
     it "does not crash" $ producesValidsOnValids (storeSize @Int @Int)
-    specify "adding an item makes the store bigger" $ forAllValid $ \store -> forAllValid $ \added -> do
+    specify "adding an item makes the store bigger" $
+      forAllValid $ \store ->
+        forAllValid $ \added -> do
           let size1 = storeSize (store :: ClientStore Int Int)
           let store' = addItemToClientStore added store
           let size2 = storeSize store'
