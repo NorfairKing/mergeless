@@ -128,9 +128,16 @@ instance (Validity i, Validity a, Show i, Show a, Ord i, Ord a) => Validity (Cli
         distinct $ M.keys clientStoreSynced ++ S.toList clientStoreDeleted
       ]
 
-instance (Ord i, FromJSON i, FromJSONKey i, FromJSON a) => FromJSON (ClientStore i a)
+instance (Ord i, FromJSON i, FromJSONKey i, FromJSON a) => FromJSON (ClientStore i a) where
+  parseJSON =
+    withObject "ClientStore" $ \o ->
+      ClientStore <$> o .:? "added" .!= M.empty <*> o .:? "synced" .!= M.empty <*>
+      o .:? "deleted" .!= S.empty
 
-instance (Ord i, ToJSON i, ToJSONKey i, ToJSON a) => ToJSON (ClientStore i a)
+instance (Ord i, ToJSON i, ToJSONKey i, ToJSON a) => ToJSON (ClientStore i a) where
+  toJSON ClientStore {..} =
+    object
+      ["added" .= clientStoreAdded, "synced" .= clientStoreSynced, "deleted" .= clientStoreDeleted]
 
 -- | The store with no items.
 emptyClientStore :: ClientStore i a
