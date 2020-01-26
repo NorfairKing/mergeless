@@ -9,18 +9,6 @@ import Data.GenValidity.Time ()
 
 import Data.Mergeless.Item
 
-instance GenUnchecked a => GenUnchecked (Added a)
-
-instance GenValid a => GenValid (Added a) where
-  genValid = genValidStructurallyWithoutExtraChecking
-  shrinkValid = shrinkValidStructurallyWithoutExtraFiltering
-
-instance GenUnchecked a => GenUnchecked (Synced a)
-
-instance GenValid a => GenValid (Synced a) where
-  genValid = genValidStructurallyWithoutExtraChecking
-  shrinkValid = shrinkValidStructurallyWithoutExtraFiltering
-
 instance GenUnchecked a => GenUnchecked (ClientItem a)
 
 instance GenValid a => GenValid (ClientItem a) where

@@ -8,56 +8,16 @@ module Data.Mergeless.Item where
 
 import Control.DeepSeq
 import Data.Aeson
-import Data.Time
 import Data.Validity
 import Data.Validity.Containers ()
-import Data.Validity.Time ()
 import GHC.Generics (Generic)
 
 {-# ANN module ("HLint: ignore Use lambda-case" :: String) #-}
 
--- | A local item of type @a@ that has been added but not synchronised yet
-data Added a =
-  Added
-    { addedValue :: !a
-    , addedCreated :: !UTCTime
-    }
-  deriving (Show, Eq, Ord, Generic)
-
-instance Validity a => Validity (Added a)
-
-instance NFData a => NFData (Added a)
-
-instance FromJSON a => FromJSON (Added a) where
-  parseJSON = withObject "Added" $ \o -> Added <$> o .: "value" <*> o .: "added"
-
-instance ToJSON a => ToJSON (Added a) where
-  toJSON Added {..} = object ["value" .= addedValue, "added" .= addedCreated]
-
-data Synced a =
-  Synced
-    { syncedValue :: !a
-    , syncedCreated :: !UTCTime
-    , syncedSynced :: !UTCTime
-    }
-  deriving (Show, Eq, Ord, Generic)
-
-instance Validity a => Validity (Synced a)
-
-instance NFData a => NFData (Synced a)
-
-instance FromJSON a => FromJSON (Synced a) where
-  parseJSON =
-    withObject "Synced" $ \o -> Synced <$> o .: "value" <*> o .: "created" <*> o .: "synced"
-
-instance ToJSON a => ToJSON (Synced a) where
-  toJSON Synced {..} =
-    object ["value" .= syncedValue, "created" .= syncedCreated, "synced" .= syncedSynced]
-
 data ClientItem a
   = ClientEmpty
-  | ClientAdded !(Added a)
-  | ClientSynced !(Synced a)
+  | ClientAdded !a
+  | ClientSynced !a
   | ClientDeleted
   deriving (Show, Eq, Ord, Generic)
 
@@ -72,7 +32,7 @@ instance ToJSON a => ToJSON (ClientItem a)
 -- | A synchronisation request for items with identifiers of type @i@ and values of type @a@
 data ItemSyncRequest a
   = ItemSyncRequestPoll
-  | ItemSyncRequestNew !(Added a)
+  | ItemSyncRequestNew a
   | ItemSyncRequestKnown
   | ItemSyncRequestDeleted
   deriving (Show, Eq, Ord, Generic)
@@ -97,9 +57,9 @@ makeItemSyncRequest ci =
 data ItemSyncResponse a
   = ItemSyncResponseInSyncEmpty
   | ItemSyncResponseInSyncFull
-  | ItemSyncResponseClientAdded UTCTime -- The time when it was synced
+  | ItemSyncResponseClientAdded
   | ItemSyncResponseClientDeleted
-  | ItemSyncResponseServerAdded !(Synced a)
+  | ItemSyncResponseServerAdded !a
   | ItemSyncResponseServerDeleted
   deriving (Show, Eq, Ord, Generic)
 
@@ -123,7 +83,7 @@ mergeItemSyncResponse ci sr =
             _ -> mismatch
         ClientAdded a ->
           case sr of
-            ItemSyncResponseClientAdded t -> ClientSynced (addedToSynced t a)
+            ItemSyncResponseClientAdded -> ClientSynced a
             ItemSyncResponseServerAdded s -> ClientSynced s
             -- For completeness sake.
             -- This can only happen if two clients make the item at the same time.
@@ -142,7 +102,7 @@ mergeItemSyncResponse ci sr =
 -- | An item in a central store with a value of type @a@
 data ServerItem a
   = ServerItemEmpty
-  | ServerItemFull !(Synced a)
+  | ServerItemFull !a
   deriving (Show, Eq, Ord, Generic)
 
 instance Validity a => Validity (ServerItem a)
@@ -153,9 +113,8 @@ instance FromJSON a => FromJSON (ServerItem a)
 
 instance ToJSON a => ToJSON (ServerItem a)
 
-processServerItemSync ::
-     UTCTime -> ServerItem a -> ItemSyncRequest a -> (ItemSyncResponse a, ServerItem a)
-processServerItemSync now si sr =
+processServerItemSync :: ServerItem a -> ItemSyncRequest a -> (ItemSyncResponse a, ServerItem a)
+processServerItemSync si sr =
   case si of
     ServerItemEmpty ->
       case sr of
@@ -164,7 +123,7 @@ processServerItemSync now si sr =
          -> (ItemSyncResponseInSyncEmpty, si)
         ItemSyncRequestNew a
           -- The client has a new item and the server has space for it, add it.
-         -> (ItemSyncResponseClientAdded now, ServerItemFull $ addedToSynced now a)
+         -> (ItemSyncResponseClientAdded, ServerItemFull a)
         ItemSyncRequestKnown
           -- The client has an item that the server doesn't, so the server must have
           -- deleted it when another client asked to do that.
@@ -188,7 +147,3 @@ processServerItemSync now si sr =
          -> (ItemSyncResponseServerAdded s, si)
         ItemSyncRequestKnown -> (ItemSyncResponseInSyncFull, si)
         ItemSyncRequestDeleted -> (ItemSyncResponseClientDeleted, ServerItemEmpty)
-
-addedToSynced :: UTCTime -> Added a -> Synced a
-addedToSynced syncTime Added {..} =
-  Synced {syncedValue = addedValue, syncedCreated = addedCreated, syncedSynced = syncTime}
