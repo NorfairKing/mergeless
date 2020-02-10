@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -9,13 +8,11 @@ module Data.Mergeless.CollectionSpec
   ( spec
   ) where
 
-import Data.Functor.Identity
 import Data.Int (Int)
 import Data.List
 import qualified Data.Map.Strict as M
 import Data.Ord
 import qualified Data.Set as S
-import Data.Time
 import GHC.Generics (Generic)
 import System.Random
 
@@ -29,7 +26,6 @@ import Test.Validity.Aeson
 import Data.GenValidity.Mergeless.Collection ()
 import Data.GenValidity.UUID ()
 import Data.Mergeless.Collection
-import Data.Mergeless.Item
 import Data.UUID
 
 {-# ANN module ("HLint: ignore Reduce duplication" :: String) #-}
@@ -418,9 +414,8 @@ newtype D m a =
     }
   deriving (Generic, Functor, Applicative, Monad, MonadState StdGen, MonadTrans, MonadIO)
 
-evalD :: D Identity a -> a
-evalD = runIdentity . evalDM
-
+-- evalD :: D Identity a -> a
+-- evalD = runIdentity . evalDM
 -- runD :: D Identity a -> StdGen -> (a, StdGen)
 -- runD = runState . unD
 evalDM :: Functor m => D m a -> m a

@@ -1,22 +1,46 @@
-resolver: lts-14.7
+resolver: lts-14.20
 packages:
   - mergeless
   - genvalidity-mergeless
 extra-deps:
-  - github: NorfairKing/validity
-    commit: a7be852cea9292ef2a618cb88ff823a53d926318
-    subdirs:
-      - validity
-      - validity-containers
-      - validity-path
-      - validity-time
-      - validity-uuid
-      - genvalidity
-      - genvalidity-containers
-      - genvalidity-criterion
-      - genvalidity-hspec
-      - genvalidity-hspec-aeson
-      - genvalidity-property
-      - genvalidity-time
-      - genvalidity-uuid
+- github: NorfairKing/validity
+  commit: be40c0a0b0bf6a1d58f4a6a5c6770c4a544c4450
+  subdirs:
+  - genvalidity
+  - genvalidity-aeson
+  - genvalidity-bytestring
+  - genvalidity-containers
+  - genvalidity-criterion
+  - genvalidity-hspec
+  - genvalidity-hspec-aeson
+  - genvalidity-hspec-binary
+  - genvalidity-hspec-cereal
+  - genvalidity-hspec-hashable
+  - genvalidity-hspec-optics
+  - genvalidity-path
+  - genvalidity-property
+  - genvalidity-scientific
+  - genvalidity-text
+  - genvalidity-time
+  - genvalidity-unordered-containers
+  - genvalidity-uuid
+  - genvalidity-vector
+  - validity
+  - validity-aeson
+  - validity-bytestring
+  - validity-containers
+  - validity-path
+  - validity-primitive
+  - validity-scientific
+  - validity-text
+  - validity-time
+  - validity-unordered-containers
+  - validity-uuid
+  - validity-vector
+nix:
+  path: [ "nixpkgs=https://github.com/NixOS/nixpkgs/archive/323fe92057bb38475a446ff5e18d3b388c2e4403.tar.gz" ]
+  add-gc-roots: true
+  packages:
+  - zlib
+  - haskellPackages.autoexporter
 

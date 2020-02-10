@@ -83,10 +83,7 @@ import Data.Set (Set)
 import Data.Word
 
 import Control.DeepSeq
-import Control.Monad.IO.Class
 import Control.Monad.State.Strict
-
-import Data.Mergeless.Item
 
 {-# ANN module ("HLint: ignore Use lambda-case" :: String) #-}
 
@@ -141,19 +138,34 @@ storeSize ClientStore {..} = M.size clientStoreAdded + M.size clientStoreSynced
 clientStoreIds :: Ord i => ClientStore i a -> Set i
 clientStoreIds ClientStore {..} = M.keysSet clientStoreSynced `S.union` clientStoreDeleted
 
--- | Add a new (unsynced) item to the store
+-- | Add an item to a client store as an added item.
+--
+-- This will take care of the uniqueness constraint of the 'ClientId's in the map.
 addItemToClientStore :: (Ord i, Ord a) => a -> ClientStore i a -> ClientStore i a
 addItemToClientStore a cs =
   let oldAddedItems = clientStoreAdded cs
       newAddedItems =
-        let newKey =
-              ClientId $
-              if M.null oldAddedItems
-                then 0
-                else let (ClientId k, _) = M.findMax oldAddedItems
-                      in succ k
+        let newKey = findFreeSpot oldAddedItems
          in M.insert newKey a oldAddedItems
    in cs {clientStoreAdded = newAddedItems}
+
+-- | Find a free client id to use
+--
+-- You shouldn't need this function, 'addItemToClientStore' takes care of this.
+findFreeSpot :: Map ClientId a -> ClientId
+findFreeSpot m =
+  if M.null m
+    then ClientId 0
+    else let (i, _) = M.findMax m
+          in go (next i)
+  where
+    go i =
+      if M.member i m
+        then go (next i)
+        else i
+    next (ClientId w)
+      | w == maxBound = ClientId 0
+      | otherwise = ClientId $ succ w
 
 deleteUnsyncedFromClientStore :: (Ord i, Ord a) => ClientId -> ClientStore i a -> ClientStore i a
 deleteUnsyncedFromClientStore cid cs = cs {clientStoreAdded = M.delete cid $ clientStoreAdded cs}
