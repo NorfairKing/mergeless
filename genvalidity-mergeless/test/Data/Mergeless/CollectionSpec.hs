@@ -43,6 +43,13 @@ spec = do
   describe "emptyStore" $ it "is valid" $ shouldBeValid (emptyClientStore @Int @Int)
   describe "storeSize" $ do
     it "does not crash" $ producesValidsOnValids (storeSize @Int @Int)
+    specify "adding an item makes the store bigger" $
+      forAllValid $ \store ->
+        forAllValid $ \added -> do
+          let size1 = storeSize (store :: ClientStore Int Int)
+          let store' = addItemToClientStore added store
+          let size2 = storeSize store'
+          size2 `shouldBe` (size1 + 1)
     specify "deleting an unsynced item after adding it leaves the store with the original size" $
       forAllValid $ \store ->
         forAllValid $ \added ->

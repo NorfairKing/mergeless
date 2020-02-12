@@ -4,7 +4,7 @@ packages:
 - genvalidity-mergeless
 extra-deps:
 - github: NorfairKing/validity
-  commit: 902bcff3456b3b9a65f59d0d5176e8aadba12c26
+  commit: be40c0a0b0bf6a1d58f4a6a5c6770c4a544c4450
   subdirs:
   - genvalidity
   - genvalidity-aeson
