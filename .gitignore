@@ -1,5 +1,5 @@
 .stack-work/
-stack.yaml.lock
+*.yaml.lock
 *.cabal
 .pre-commit-config.yaml
 result*
