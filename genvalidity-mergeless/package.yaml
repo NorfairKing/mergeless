@@ -1,5 +1,5 @@
 name:                genvalidity-mergeless
-version:             0.0.0.0
+version:             0.1.0.0
 github:              "NorfairKing/mergeless"
 license:             MIT
 author:              "Tom Sydney Kerckhove"
@@ -22,7 +22,7 @@ library:
     - genvalidity
     - genvalidity-containers
     - genvalidity-time
-    - mergeless
+    - mergeless >= 0.2.0.0
 
 tests:
   mergeless-test:
