@@ -1,5 +1,5 @@
 name:                mergeless
-version:             0.2.0.1
+version:             0.2.0.2
 github:              "NorfairKing/mergeless"
 license:             MIT
 author:              "Tom Sydney Kerckhove"
@@ -17,7 +17,7 @@ library:
   source-dirs: src
   dependencies:
     - aeson
-    - base >= 4.7 && < 5
+    - base >= 4.11 && < 5
     - containers
     - deepseq
     - mtl
