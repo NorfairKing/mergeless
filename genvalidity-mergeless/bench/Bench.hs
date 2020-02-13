@@ -16,12 +16,6 @@ main :: IO ()
 main =
   Criterion.defaultMain
     [ bgroup
-        "Utils"
-        [ genValidBench @(Added Bool)
-        , genValidBench @(Synced Bool)
-        , genValidBench @(ClientAddition Int)
-        ]
-    , bgroup
         "Item"
         [ genValidBench @(ClientItem Bool)
         , genValidBench @(ItemSyncRequest Bool)
@@ -33,7 +27,6 @@ main =
         [ genValidBench @ClientId
         , genValidBench @(ClientStore Int Bool)
         , genValidBench @(SyncRequest Int Bool)
-        , genValidBench @(ClientAddition Int)
         , genValidBench @(SyncResponse Int Bool)
         , genValidBench @(ServerStore Int Bool)
         ]
