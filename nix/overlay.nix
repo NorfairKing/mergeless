@@ -12,6 +12,10 @@ with final.haskell.lib;
         failOnAllWarnings (
           final.haskellPackages.callCabal2nix "genvalidity-mergeless" (final.gitignoreSource ../genvalidity-mergeless) {}
         );
+      mergeless-persistent =
+        failOnAllWarnings (
+          final.haskellPackages.callCabal2nix "mergeless-persistent" (final.gitignoreSource ../mergeless) {}
+        );
     };
   haskellPackages =
     previous.haskellPackages.override (

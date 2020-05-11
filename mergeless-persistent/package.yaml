@@ -1,0 +1,41 @@
+name:                mergeless-persistent
+version:             0.0.0.0
+github:              "NorfairKing/mergeless"
+license:             MIT
+author:              "Tom Sydney Kerckhove"
+maintainer:          "syd.kerckhove@gmail.com"
+copyright:           "Copyright: (c) 2018-2020 Tom Sydney Kerckhove"
+
+dependencies:
+  - base >= 4.11 && < 5
+
+library:
+  source-dirs: src
+  dependencies:
+  - mergeless
+  - persistent
+
+tests:
+  mergeless-persistent-test:
+    main: Spec.hs
+    source-dirs: test
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    dependencies:
+      - QuickCheck
+      - containers
+      - genvalidity-hspec
+      - hspec
+      - mergeless
+      - mergeless-persistent
+      - monad-logger
+      - mtl
+      - path
+      - path-io
+      - persistent
+      - persistent-sqlite
+      - persistent-template
+      - text
+      - validity
