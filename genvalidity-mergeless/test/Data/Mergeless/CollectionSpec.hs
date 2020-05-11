@@ -80,6 +80,9 @@ spec = do
   describe "deleteSyncedFromClientStore"
     $ it "produces valid stores"
     $ producesValidsOnValids2 (deleteSyncedFromClientStore @Int @Int)
+  describe "emptySyncRequest"
+    $ it "is valid"
+    $ shouldBeValid (emptySyncRequest @Int @Int)
   describe "makeSyncRequest"
     $ it "produces valid sync requests"
     $ producesValidsOnValids (makeSyncRequest @Int @Int)

@@ -54,6 +54,7 @@ module Data.Mergeless.Collection
     emptySyncResponse,
 
     -- * Client-side Synchronisation
+    emptySyncRequest,
     makeSyncRequest,
     mergeSyncResponse,
     pureClientSyncProcessor,
@@ -226,6 +227,14 @@ instance (ToJSON i, ToJSON a) => ToJSON (SyncRequest i a) where
         "synced" .= syncRequestSynced,
         "undeleted" .= syncRequestDeleted
       ]
+
+emptySyncRequest :: SyncRequest i a
+emptySyncRequest =
+  SyncRequest
+    { syncRequestAdded = M.empty,
+      syncRequestSynced = S.empty,
+      syncRequestDeleted = S.empty
+    }
 
 -- | Produce a synchronisation request for a client-side store.
 --
