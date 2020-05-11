@@ -8,19 +8,10 @@
 
 module TestUtils.ServerDB where
 
-import Control.Monad
-import Control.Monad.IO.Class
-import Control.Monad.Logger
-import qualified Data.Text as T
-import Data.Validity
-import Database.Persist
+import Data.GenValidity
 import Database.Persist.Sql
-import Database.Persist.Sqlite
 import Database.Persist.TH
 import GHC.Generics (Generic)
-import Path
-import Path.IO
-import Test.Hspec
 
 share
   [mkPersist sqlSettings, mkMigrate "migrateServer"]
@@ -37,3 +28,7 @@ ServerThing
 |]
 
 instance Validity ServerThing
+
+instance GenUnchecked ServerThing
+
+instance GenValid ServerThing

@@ -9,21 +9,11 @@
 
 module TestUtils.ClientDB where
 
-import Control.Monad
-import Control.Monad.IO.Class
-import Control.Monad.Logger
 import Data.Mergeless
 import Data.Mergeless.Persistent ()
-import qualified Data.Text as T
-import Data.Validity
-import Database.Persist
 import Database.Persist.Sql
-import Database.Persist.Sqlite
 import Database.Persist.TH
 import GHC.Generics (Generic)
-import Path
-import Path.IO
-import Test.Hspec
 import TestUtils.ServerDB
 
 share
