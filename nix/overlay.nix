@@ -6,11 +6,11 @@ with final.haskell.lib;
     {
       mergeless =
         failOnAllWarnings (
-          final.haskellPackages.callCabal2nix "mergeless" ( final.gitignoreSource ../mergeless ) {}
+          final.haskellPackages.callCabal2nix "mergeless" (final.gitignoreSource ../mergeless) {}
         );
       genvalidity-mergeless =
         failOnAllWarnings (
-          final.haskellPackages.callCabal2nix "genvalidity-mergeless" ( final.gitignoreSource ../genvalidity-mergeless ) {}
+          final.haskellPackages.callCabal2nix "genvalidity-mergeless" (final.gitignoreSource ../genvalidity-mergeless) {}
         );
     };
   haskellPackages =
@@ -18,7 +18,7 @@ with final.haskell.lib;
       old:
         {
           overrides =
-            final.lib.composeExtensions ( old.overrides or (_: _: {}) ) (
+            final.lib.composeExtensions (old.overrides or (_: _: {})) (
               self: super: final.mergelessPackages
             );
         }

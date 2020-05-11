@@ -6,7 +6,6 @@ module Data.GenValidity.Mergeless.Item where
 import Data.GenValidity
 import Data.GenValidity.Containers ()
 import Data.GenValidity.Time ()
-
 import Data.Mergeless.Item
 
 instance GenUnchecked a => GenUnchecked (ClientItem a)

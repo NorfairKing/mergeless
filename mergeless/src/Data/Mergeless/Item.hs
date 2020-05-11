@@ -117,32 +117,32 @@ processServerItemSync si sr =
   case si of
     ServerItemEmpty ->
       case sr of
-        ItemSyncRequestPoll
+        ItemSyncRequestPoll ->
           -- Both the client and the server think the item is empty, fine.
-         -> (ItemSyncResponseInSyncEmpty, si)
-        ItemSyncRequestNew a
+          (ItemSyncResponseInSyncEmpty, si)
+        ItemSyncRequestNew a ->
           -- The client has a new item and the server has space for it, add it.
-         -> (ItemSyncResponseClientAdded, ServerItemFull a)
-        ItemSyncRequestKnown
+          (ItemSyncResponseClientAdded, ServerItemFull a)
+        ItemSyncRequestKnown ->
           -- The client has an item that the server doesn't, so the server must have
           -- deleted it when another client asked to do that.
           -- Leave it deleted.
-         -> (ItemSyncResponseServerDeleted, si)
-        ItemSyncRequestDeleted
+          (ItemSyncResponseServerDeleted, si)
+        ItemSyncRequestDeleted ->
           -- The server has deleted an item but the current client hasn't been made aware of that
           -- AND this server also deleted that item in the meantime.
           -- Just leave it deleted.
-         -> (ItemSyncResponseClientDeleted, si)
+          (ItemSyncResponseClientDeleted, si)
     ServerItemFull s ->
       case sr of
-        ItemSyncRequestPoll
+        ItemSyncRequestPoll ->
           -- The server has an item that the client doesn't, send it to the client.
-         -> (ItemSyncResponseServerAdded s, si)
-        ItemSyncRequestNew _
+          (ItemSyncResponseServerAdded s, si)
+        ItemSyncRequestNew _ ->
           -- The client wants to add an item that the server already has.
           -- That means that another client has added that same item in the meantime.
           -- This wouldn't happen if the items were named.
           -- In this case, for completeness sake,
-         -> (ItemSyncResponseServerAdded s, si)
+          (ItemSyncResponseServerAdded s, si)
         ItemSyncRequestKnown -> (ItemSyncResponseInSyncFull, si)
         ItemSyncRequestDeleted -> (ItemSyncResponseClientDeleted, ServerItemEmpty)
