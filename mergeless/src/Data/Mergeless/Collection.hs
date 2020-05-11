@@ -56,10 +56,9 @@ module Data.Mergeless.Collection
     -- * Client-side Synchronisation
     makeSyncRequest,
     mergeSyncResponse,
-    addRemotelyAddedItems,
-    addAddedItems,
-    deleteItemsToBeDeletedLocally,
-    deleteLocalUndeletedItems,
+    pureClientSyncProcessor,
+    ClientSyncProcessor (..),
+    mergeSyncResponseCustom,
 
     -- * Server-side Synchronisation
 
@@ -297,40 +296,48 @@ mergeSyncResponse ::
   ClientStore i a ->
   SyncResponse i a ->
   ClientStore i a
-mergeSyncResponse s SyncResponse {..} =
-  addRemotelyAddedItems syncResponseServerAdded
-    . addAddedItems syncResponseClientAdded
-    . deleteItemsToBeDeletedLocally syncResponseServerDeleted
-    . deleteLocalUndeletedItems syncResponseClientDeleted
-    $ s
+mergeSyncResponse s sr =
+  flip execState s $
+    mergeSyncResponseCustom
+      pureClientSyncProcessor
+      sr
 
-addRemotelyAddedItems :: (Ord i, Ord a) => Map i a -> ClientStore i a -> ClientStore i a
-addRemotelyAddedItems m cs =
-  cs {clientStoreSynced = M.union (clientStoreSynced cs) (m `diffSet` clientStoreIds cs)}
+pureClientSyncProcessor :: forall i a. Ord i => ClientSyncProcessor i a (State (ClientStore i a))
+pureClientSyncProcessor =
+  ClientSyncProcessor
+    { clientSyncProcessorSyncServerAdded = \m -> modify $ \cs ->
+        cs {clientStoreSynced = M.union (clientStoreSynced cs) (m `diffSet` clientStoreIds cs)},
+      clientSyncProcessorSyncClientAdded = \addedItems -> modify $ \cs ->
+        let oldAdded = clientStoreAdded cs
+            oldSynced = clientStoreSynced cs
+            go :: (Map ClientId a, Map i a) -> ClientId -> i -> (Map ClientId a, Map i a)
+            go (added, synced) cid i =
+              case M.lookup cid added of
+                Nothing -> (added, synced)
+                Just a -> (M.delete cid added, M.insert i a synced)
+            (newAdded, newSynced) = M.foldlWithKey go (oldAdded, oldSynced) addedItems
+         in cs {clientStoreAdded = newAdded, clientStoreSynced = newSynced},
+      clientSyncProcessorSyncServerDeleted = \toBeDeletedLocally -> modify $ \cs ->
+        cs {clientStoreSynced = clientStoreSynced cs `diffSet` toBeDeletedLocally},
+      clientSyncProcessorSyncClientDeleted = \cd -> modify $ \cs ->
+        cs {clientStoreDeleted = clientStoreDeleted cs `S.difference` cd}
+    }
 
-addAddedItems ::
-  forall i a.
-  (Ord i, Ord a) =>
-  Map ClientId i ->
-  ClientStore i a ->
-  ClientStore i a
-addAddedItems addedItems cs =
-  let oldAdded = clientStoreAdded cs
-      oldSynced = clientStoreSynced cs
-      go :: (Map ClientId a, Map i a) -> ClientId -> i -> (Map ClientId a, Map i a)
-      go (added, synced) cid i =
-        case M.lookup cid added of
-          Nothing -> (added, synced)
-          Just a -> (M.delete cid added, M.insert i a synced)
-      (newAdded, newSynced) = M.foldlWithKey go (oldAdded, oldSynced) addedItems
-   in cs {clientStoreAdded = newAdded, clientStoreSynced = newSynced}
+data ClientSyncProcessor i a m
+  = ClientSyncProcessor
+      { clientSyncProcessorSyncServerAdded :: Map i a -> m (),
+        clientSyncProcessorSyncClientAdded :: Map ClientId i -> m (),
+        clientSyncProcessorSyncServerDeleted :: Set i -> m (),
+        clientSyncProcessorSyncClientDeleted :: Set i -> m ()
+      }
+  deriving (Generic)
 
-deleteItemsToBeDeletedLocally :: (Ord i, Ord a) => Set i -> ClientStore i a -> ClientStore i a
-deleteItemsToBeDeletedLocally toBeDeletedLocally cs =
-  cs {clientStoreSynced = clientStoreSynced cs `diffSet` toBeDeletedLocally}
-
-deleteLocalUndeletedItems :: (Ord i, Ord a) => Set i -> ClientStore i a -> ClientStore i a
-deleteLocalUndeletedItems cd cs = cs {clientStoreDeleted = clientStoreDeleted cs `S.difference` cd}
+mergeSyncResponseCustom :: Applicative m => ClientSyncProcessor i a m -> SyncResponse i a -> m ()
+mergeSyncResponseCustom ClientSyncProcessor {..} SyncResponse {..} =
+  clientSyncProcessorSyncServerAdded syncResponseServerAdded
+    <* clientSyncProcessorSyncClientAdded syncResponseClientAdded
+    <* clientSyncProcessorSyncServerDeleted syncResponseServerDeleted
+    <* clientSyncProcessorSyncClientDeleted syncResponseClientDeleted
 
 -- | A record of the basic operations that are necessary to build a synchronisation processor.
 data ServerSyncProcessor i a m
