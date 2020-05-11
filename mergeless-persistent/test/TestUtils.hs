@@ -22,7 +22,6 @@ import Database.Persist.Sql
 import Database.Persist.Sqlite
 import Path
 import Path.IO
-import Test.Hspec
 import TestUtils.ClientDB
 import TestUtils.ServerDB
 
@@ -40,26 +39,16 @@ instance ToBackendKey SqlBackend record => GenValid (Key record) where
   genValid = toSqlKey <$> genValid
   shrinkValid = shrinkUnchecked
 
-data TestEnv
-  = TestEnv
-      { testEnvClientPool :: ConnectionPool,
-        testEnvServerPool :: ConnectionPool
-      }
+withServerPool :: (ConnectionPool -> IO a) -> IO a
+withServerPool func =
+  withSystemTempFile "mergeless-persistent-test-server-db" $ \serverFile _ ->
+    runNoLoggingT $ withSqlitePool (T.pack $ fromAbsFile serverFile) 1 $ \serverPool -> do
+      flip runSqlPool serverPool $ void $ runMigrationSilent migrateServer
+      liftIO $ func serverPool
 
-persistentMergelessSpec :: SpecWith TestEnv -> Spec
-persistentMergelessSpec = around withTestEnv
-
-withTestEnv :: (TestEnv -> IO a) -> IO a
-withTestEnv func =
-  runNoLoggingT
-    $ withSystemTempFile "mergeless-persistent-test-client-db"
-    $ \clientFile _ ->
-      withSystemTempFile "mergeless-persistent-test-server-db" $ \serverFile _ ->
-        withSqlitePool (T.pack $ fromAbsFile clientFile) 1 $
-          \clientPool ->
-            withSqlitePool (T.pack $ fromAbsFile serverFile) 1 $
-              \serverPool -> do
-                let tenv = TestEnv {testEnvClientPool = clientPool, testEnvServerPool = serverPool}
-                flip runSqlPool clientPool $ void $ runMigrationSilent migrateClient
-                flip runSqlPool serverPool $ void $ runMigrationSilent migrateServer
-                liftIO $ func tenv
+withClientPool :: Int -> (ConnectionPool -> IO a) -> IO a
+withClientPool i func =
+  withSystemTempFile ("mergeless-persistent-test-client-" <> show i <> "-db") $ \clientFile _ ->
+    runNoLoggingT $ withSqlitePool (T.pack $ fromAbsFile clientFile) 1 $ \clientPool -> do
+      flip runSqlPool clientPool $ void $ runMigrationSilent migrateClient
+      liftIO $ func clientPool

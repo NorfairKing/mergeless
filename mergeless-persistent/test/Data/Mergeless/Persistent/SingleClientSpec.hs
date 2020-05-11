@@ -22,10 +22,7 @@ import Control.Monad.Reader
 import Data.GenValidity.Mergeless
 import Data.List
 import qualified Data.Map as M
-import Data.Maybe
 import Data.Mergeless
-import Data.Set (Set)
-import qualified Data.Set as S
 import Database.Persist.Sql
 import Test.Hspec
 import Test.Hspec.QuickCheck
@@ -36,7 +33,7 @@ import TestUtils
 {-# ANN module ("HLint: ignore Reduce duplication" :: String) #-}
 
 spec :: Spec
-spec = modifyMaxShrinks (const 0) $ persistentMergelessSpec $ do
+spec = modifyMaxShrinks (const 0) $ oneClientSpec $ do
   describe "Single item" $ do
     it "Succesfully downloads a single item from the server for an empty client" $ \te ->
       forAllValid $ \(sid, si) -> runTest te $ do
@@ -91,17 +88,6 @@ spec = modifyMaxShrinks (const 0) $ persistentMergelessSpec $ do
             liftIO $ do
               cstore3 `shouldBe` cstore2
               sstore3 `shouldBe` sstore2
-
-genServerStoreFromSet :: (Ord i, GenValid v) => Set i -> Gen (ServerStore i v)
-genServerStoreFromSet s = ServerStore <$> mapWithIds s
-
-genClientStoreFromSet :: (Ord i, GenValid v) => Set i -> Gen (ClientStore i v)
-genClientStoreFromSet s = do
-  (s1, s2) <- splitSet s
-  clientStoreAdded <- genValid
-  clientStoreSynced <- mapWithIds s1
-  let clientStoreDeleted = s2
-  pure ClientStore {..}
 
 type T a = ReaderT TestEnv IO a
 
@@ -173,132 +159,17 @@ serverProcessSync = runServerDB . serverProcessSyncQuery
 clientMergeSyncResponse :: SResp -> T ()
 clientMergeSyncResponse = runClientDB . clientMergeSyncResponseQuery
 
-setupClientQuery :: CS -> SqlPersistT IO ()
-setupClientQuery ClientStore {..} = do
-  forM_ (M.toList clientStoreAdded) $ \(cid, ServerThing {..}) ->
-    insert_
-      ClientThing
-        { clientThingNumber = serverThingNumber,
-          clientThingClientId = Just cid,
-          clientThingServerId = Nothing,
-          clientThingDeleted = False
-        }
-  forM_ (M.toList clientStoreSynced) $ \(sid, ServerThing {..}) ->
-    insert_
-      ClientThing
-        { clientThingNumber = serverThingNumber,
-          clientThingClientId = Nothing,
-          clientThingServerId = Just sid,
-          clientThingDeleted = False
-        }
-  forM_ (S.toList clientStoreDeleted) $ \sid ->
-    insert_
-      ClientThing
-        { clientThingNumber = 0, -- Dummy value
-          clientThingClientId = Nothing,
-          clientThingServerId = Just sid,
-          clientThingDeleted = True
-        }
+data TestEnv
+  = TestEnv
+      { testEnvClientPool :: ConnectionPool,
+        testEnvServerPool :: ConnectionPool
+      }
 
-setupServerQuery :: SS -> SqlPersistT IO ()
-setupServerQuery ServerStore {..} = forM_ (M.toList serverStoreItems) $ \(i, e) -> void $ insertKey i e
+oneClientSpec :: SpecWith TestEnv -> Spec
+oneClientSpec = around withTestEnv
 
-clientGetStoreQuery :: SqlPersistT IO CS
-clientGetStoreQuery = do
-  clientStoreAdded <-
-    M.fromList . map (\(Entity _ ClientThing {..}) -> (fromJust clientThingClientId, ServerThing {serverThingNumber = clientThingNumber}))
-      <$> selectList
-        [ ClientThingClientId !=. Nothing,
-          ClientThingServerId ==. Nothing,
-          ClientThingDeleted ==. False
-        ]
-        []
-  clientStoreSynced <-
-    M.fromList . map (\(Entity _ ClientThing {..}) -> (fromJust clientThingServerId, ServerThing {serverThingNumber = clientThingNumber}))
-      <$> selectList
-        [ ClientThingClientId ==. Nothing,
-          ClientThingServerId !=. Nothing,
-          ClientThingDeleted ==. False
-        ]
-        []
-  clientStoreDeleted <-
-    S.fromList . map (\(Entity _ ClientThing {..}) -> fromJust clientThingServerId)
-      <$> selectList
-        [ ClientThingServerId !=. Nothing,
-          ClientThingDeleted ==. True
-        ]
-        []
-  pure ClientStore {..}
-
-clientMakeSyncRequestQuery :: SqlPersistT IO SReq
-clientMakeSyncRequestQuery = do
-  syncRequestAdded <-
-    M.fromList . map (\(Entity _ ClientThing {..}) -> (fromJust clientThingClientId, ServerThing {serverThingNumber = clientThingNumber}))
-      <$> selectList
-        [ ClientThingClientId !=. Nothing,
-          ClientThingServerId ==. Nothing,
-          ClientThingDeleted ==. False
-        ]
-        []
-  syncRequestSynced <-
-    S.fromList . map (\(Entity _ ClientThing {..}) -> fromJust clientThingServerId)
-      <$> selectList
-        [ ClientThingClientId ==. Nothing,
-          ClientThingServerId !=. Nothing,
-          ClientThingDeleted ==. False
-        ]
-        []
-  syncRequestDeleted <-
-    S.fromList . map (\(Entity _ ClientThing {..}) -> fromJust clientThingServerId)
-      <$> selectList
-        [ ClientThingServerId !=. Nothing,
-          ClientThingDeleted ==. True
-        ]
-        []
-  pure SyncRequest {..}
-
-serverGetStoreQuery :: SqlPersistT IO SS
-serverGetStoreQuery = ServerStore . M.fromList . map (\(Entity stid st) -> (stid, st)) <$> selectList [] []
-
-serverProcessSyncQuery :: SReq -> SqlPersistT IO SResp
-serverProcessSyncQuery sr = do
-  let serverSyncProcessorDeleteMany s = do
-        deleteWhere [ServerThingId <-. S.toList s] -- FIXME this operator can crash
-        pure s -- Just assume that everything was deleted.
-      serverSyncProcessorQueryNoLongerSynced s = do
-        aliases <-
-          selectList [ServerThingId <-. S.toList s] [] -- FIXME this operator can crash
-        let inSButNotInStore =
-              s `S.difference` S.fromList (map entityKey aliases)
-        pure inSButNotInStore
-      serverSyncProcessorQueryNewRemote s =
-        M.fromList . map (\(Entity ti t) -> (ti, t))
-          <$> selectList [ServerThingId /<-. S.toList s] [] -- FIXME this operator can crash
-      serverSyncProcessorInsertMany m =
-        fmap (M.fromList . catMaybes)
-          $ forM (M.toList m)
-          $ \(cid, t) -> do
-            mid <- insertUnique t
-            pure $ (,) cid <$> mid
-      proc = ServerSyncProcessor {..}
-  processServerSyncCustom proc sr
-
-clientMergeSyncResponseQuery :: SResp -> SqlPersistT IO ()
-clientMergeSyncResponseQuery sr = do
-  let clientSyncProcessorSyncServerAdded m = forM_ (M.toList m) $ \(si, ServerThing {..}) ->
-        insert_
-          ( ClientThing
-              { clientThingNumber = serverThingNumber,
-                clientThingClientId = Nothing,
-                clientThingServerId = Just si,
-                clientThingDeleted = False
-              }
-          )
-      clientSyncProcessorSyncClientAdded m = forM_ (M.toList m) $ \(cid, sid) ->
-        updateWhere [ClientThingClientId ==. Just cid] [ClientThingClientId =. Nothing, ClientThingServerId =. Just sid]
-      clientSyncProcessorSyncServerDeleted s = forM_ (S.toList s) $ \sid ->
-        deleteWhere [ClientThingServerId ==. Just sid]
-      clientSyncProcessorSyncClientDeleted s = forM_ (S.toList s) $ \sid ->
-        deleteWhere [ClientThingServerId ==. Just sid, ClientThingDeleted ==. True]
-      proc = ClientSyncProcessor {..}
-  mergeSyncResponseCustom proc sr
+withTestEnv :: (TestEnv -> IO a) -> IO a
+withTestEnv func =
+  withServerPool $ \serverPool -> withClientPool 1 $ \clientPool -> do
+    let tenv = TestEnv {testEnvClientPool = clientPool, testEnvServerPool = serverPool}
+    liftIO $ func tenv

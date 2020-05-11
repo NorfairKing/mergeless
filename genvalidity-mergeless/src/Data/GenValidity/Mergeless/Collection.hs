@@ -106,6 +106,9 @@ instance
   (GenUnchecked i, GenUnchecked a, Show i, Show a, GenInvalid i, GenInvalid a, Ord i, Ord a) =>
   GenInvalid (ServerStore i a)
 
+genServerStoreFromSet :: (Ord i, GenValid v) => Set i -> Gen (ServerStore i v)
+genServerStoreFromSet s = ServerStore <$> mapWithIds s
+
 genUnsyncedStore ::
   forall i a.
   (Ord i, Ord a, GenValid i, GenValid a) =>
@@ -113,3 +116,11 @@ genUnsyncedStore ::
 genUnsyncedStore = do
   as <- genValid
   pure $ emptyClientStore {clientStoreAdded = as}
+
+genClientStoreFromSet :: (Ord i, GenValid v) => Set i -> Gen (ClientStore i v)
+genClientStoreFromSet s = do
+  (s1, s2) <- splitSet s
+  clientStoreAdded <- genValid
+  clientStoreSynced <- mapWithIds s1
+  let clientStoreDeleted = s2
+  pure ClientStore {..}
