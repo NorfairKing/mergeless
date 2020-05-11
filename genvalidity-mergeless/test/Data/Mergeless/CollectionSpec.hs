@@ -449,10 +449,6 @@ newtype D m a
       }
   deriving (Generic, Functor, Applicative, Monad, MonadState StdGen, MonadTrans, MonadIO)
 
--- evalD :: D Identity a -> a
--- evalD = runIdentity . evalDM
--- runD :: D Identity a -> StdGen -> (a, StdGen)
--- runD = runState . unD
 evalDM :: Functor m => D m a -> m a
 evalDM d = fst <$> runDM d (mkStdGen 42)
 
