@@ -42,7 +42,20 @@ ClientThing
 
 |]
 
--- instance Validity ClientThing
+setupUnsyncedClientQuery :: [ServerThing] -> SqlPersistT IO ()
+setupUnsyncedClientQuery =
+  foldM_ go minBound
+  where
+    go :: ClientId -> ServerThing -> SqlPersistT IO ClientId
+    go cid ServerThing {..} = do
+      insert_
+        ClientThing
+          { clientThingNumber = serverThingNumber,
+            clientThingClientId = Just cid,
+            clientThingServerId = Nothing,
+            clientThingDeleted = False
+          }
+      pure $ succ cid
 
 setupClientQuery :: ClientStore ServerThingId ServerThing -> SqlPersistT IO ()
 setupClientQuery ClientStore {..} = do

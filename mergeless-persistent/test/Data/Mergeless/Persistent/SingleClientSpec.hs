@@ -105,19 +105,7 @@ runServerDB func = do
   liftIO $ runSqlPool func pool
 
 setupUnsyncedClient :: [ServerThing] -> T ()
-setupUnsyncedClient sts =
-  runClientDB $ foldM_ go minBound sts
-  where
-    go :: ClientId -> ServerThing -> SqlPersistT IO ClientId
-    go cid ServerThing {..} = do
-      insert_
-        ClientThing
-          { clientThingNumber = serverThingNumber,
-            clientThingClientId = Just cid,
-            clientThingServerId = Nothing,
-            clientThingDeleted = False
-          }
-      pure $ succ cid
+setupUnsyncedClient = runClientDB . setupUnsyncedClientQuery
 
 type CS = ClientStore ServerThingId ServerThing
 
