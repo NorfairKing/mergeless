@@ -19,10 +19,10 @@ tests:
   mergeless-persistent-test:
     main: Spec.hs
     source-dirs: test
-    ghc-options:
-      - -threaded
-      - -rtsopts
-      - -with-rtsopts=-N
+    # ghc-options:
+    #   - -threaded
+    #   - -rtsopts
+    #   - -with-rtsopts=-N
     dependencies:
       - QuickCheck
       - containers

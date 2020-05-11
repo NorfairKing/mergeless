@@ -341,12 +341,12 @@ data ClientSyncProcessor i a m
       }
   deriving (Generic)
 
-mergeSyncResponseCustom :: Applicative m => ClientSyncProcessor i a m -> SyncResponse i a -> m ()
-mergeSyncResponseCustom ClientSyncProcessor {..} SyncResponse {..} =
+mergeSyncResponseCustom :: Monad m => ClientSyncProcessor i a m -> SyncResponse i a -> m ()
+mergeSyncResponseCustom ClientSyncProcessor {..} SyncResponse {..} = do
   clientSyncProcessorSyncServerAdded syncResponseServerAdded
-    <* clientSyncProcessorSyncClientAdded syncResponseClientAdded
-    <* clientSyncProcessorSyncServerDeleted syncResponseServerDeleted
-    <* clientSyncProcessorSyncClientDeleted syncResponseClientDeleted
+  clientSyncProcessorSyncServerDeleted syncResponseServerDeleted
+  clientSyncProcessorSyncClientDeleted syncResponseClientDeleted
+  clientSyncProcessorSyncClientAdded syncResponseClientAdded
 
 -- | A record of the basic operations that are necessary to build a synchronisation processor.
 data ServerSyncProcessor i a m

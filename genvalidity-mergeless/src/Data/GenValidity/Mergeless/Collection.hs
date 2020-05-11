@@ -90,7 +90,7 @@ splitSet s =
       pure $ S.split a s
 
 mapWithIds :: (Ord i, GenValid a) => Set i -> Gen (Map i a)
-mapWithIds s = fmap M.fromList $ forM (S.toList s) $ \i -> (,) i <$> genValid
+mapWithIds = traverse id . M.fromSet (const genValid)
 
 instance
   (GenUnchecked i, GenUnchecked a, Show i, Show a, GenInvalid i, GenInvalid a, Ord i, Ord a) =>
