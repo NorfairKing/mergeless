@@ -12,9 +12,10 @@
 --
 -- * Items must be immutable.
 -- * Items must allow for a centrally unique identifier.
--- * Identifiers for items must be generatable in such a way that they are certainly unique.
+-- * Items must allow for a client-side unique identifier.
+-- * Identifiers for items must be generated in such a way that they are certainly unique.
 --
--- Should mutation be a requirement, then it can be build such that it entails deleting the old version and creating a new version that is the modification of the old version.
+-- Should mutation be a requirement, then there is another library: 'mergeful' for exactly this purpose.
 --
 --
 -- There are a few obvious candidates for identifiers:
@@ -43,24 +44,27 @@
 -- * The client sends that request to the central server and gets a 'SyncResponse'.
 -- * The client then updates its local store with 'mergeSyncResponse'.
 module Data.Mergeless.Collection
-  ( ClientId (..),
-    ClientStore (..),
+  ( ClientStore (..),
+    SyncRequest (..),
+    SyncResponse (..),
+
+    -- * Client-side Synchronisation
+
+    -- ** General
+    ClientSyncProcessor (..),
+    mergeSyncResponseCustom,
+
+    -- ** Pure
     emptyClientStore,
+    ClientId (..),
     storeSize,
     addItemToClientStore,
     deleteUnsyncedFromClientStore,
     deleteSyncedFromClientStore,
-    SyncRequest (..),
-    SyncResponse (..),
-    emptySyncResponse,
-
-    -- * Client-side Synchronisation
     emptySyncRequest,
     makeSyncRequest,
     mergeSyncResponse,
     pureClientSyncProcessor,
-    ClientSyncProcessor (..),
-    mergeSyncResponseCustom,
 
     -- * Server-side Synchronisation
 
@@ -71,6 +75,7 @@ module Data.Mergeless.Collection
     -- ** Synchronisation with a simple central store
     ServerStore (..),
     emptyServerStore,
+    emptySyncResponse,
     processServerSync,
   )
 where
@@ -103,7 +108,7 @@ instance Validity ClientId
 
 instance NFData ClientId
 
--- | A client-side store of items with Id's of type @i@ and values of type @a@
+-- | A client-side store of items with Client Id's of type @ci@, Server Id's of type @i@ and values of type @a@
 data ClientStore ci si a
   = ClientStore
       { clientStoreAdded :: !(Map ci a),
@@ -134,7 +139,7 @@ instance (Ord ci, ToJSON ci, ToJSONKey ci, Ord si, ToJSON si, ToJSONKey si, ToJS
     object
       ["added" .= clientStoreAdded, "synced" .= clientStoreSynced, "deleted" .= clientStoreDeleted]
 
--- | The store with no items.
+-- | The client store with no items.
 emptyClientStore :: ClientStore ci si a
 emptyClientStore =
   ClientStore
@@ -155,6 +160,8 @@ clientStoreIds ClientStore {..} = M.keysSet clientStoreSynced `S.union` clientSt
 -- | Add an item to a client store as an added item.
 --
 -- This will take care of the uniqueness constraint of the 'ci's in the map.
+--
+-- The values wrap around when reaching 'maxBound'.
 addItemToClientStore :: (Enum ci, Bounded ci, Ord ci, Ord si, Ord a) => a -> ClientStore ci si a -> ClientStore ci si a
 addItemToClientStore a cs =
   let oldAddedItems = clientStoreAdded cs
@@ -166,6 +173,8 @@ addItemToClientStore a cs =
 -- | Find a free client id to use
 --
 -- You shouldn't need this function, 'addItemToClientStore' takes care of this.
+--
+-- The values wrap around when reaching 'maxBound'.
 findFreeSpot :: (Ord ci, Enum ci, Bounded ci) => Map ci a -> ci
 findFreeSpot m =
   if M.null m
@@ -196,7 +205,7 @@ deleteSyncedFromClientStore i cs =
               clientStoreDeleted = S.insert i $ clientStoreDeleted cs
             }
 
--- | A synchronisation request for items with identifiers of type @i@ and values of type @a@
+-- | A synchronisation request for items with Client Id's of type @ci@, Server Id's of type @i@ and values of type @a@
 data SyncRequest ci si a
   = SyncRequest
       { syncRequestAdded :: !(Map ci a),
