@@ -11,6 +11,7 @@
 module TestUtils.ClientDB where
 
 import Control.Monad
+import Data.Int
 import qualified Data.Map as M
 import Data.Maybe
 import Data.Mergeless
@@ -28,11 +29,9 @@ share
 
 ClientThing
   number Int
-  clientId ClientId Maybe -- Nothing means it's been synced
   serverId ServerThingId Maybe -- Nothing means it's not been synced
   deleted Bool -- True means this item has been tombstoned
 
-  ClientUniqueClientId clientId !force
   ClientUniqueServerId serverId !force
 
   deriving Show
@@ -46,24 +45,24 @@ setupUnsyncedClientQuery :: [ServerThing] -> SqlPersistT IO ()
 setupUnsyncedClientQuery =
   foldM_ go minBound
   where
-    go :: ClientId -> ServerThing -> SqlPersistT IO ClientId
+    go :: Int64 -> ServerThing -> SqlPersistT IO Int64
     go cid ServerThing {..} = do
-      insert_
+      insertKey
+        (toSqlKey cid)
         ClientThing
           { clientThingNumber = serverThingNumber,
-            clientThingClientId = Just cid,
             clientThingServerId = Nothing,
             clientThingDeleted = False
           }
       pure $ succ cid
 
-setupClientQuery :: ClientStore ClientId ServerThingId ServerThing -> SqlPersistT IO ()
+setupClientQuery :: ClientStore ClientThingId ServerThingId ServerThing -> SqlPersistT IO ()
 setupClientQuery ClientStore {..} = do
   forM_ (M.toList clientStoreAdded) $ \(cid, ServerThing {..}) ->
-    insert_
+    insertKey
+      cid
       ClientThing
         { clientThingNumber = serverThingNumber,
-          clientThingClientId = Just cid,
           clientThingServerId = Nothing,
           clientThingDeleted = False
         }
@@ -71,7 +70,6 @@ setupClientQuery ClientStore {..} = do
     insert_
       ClientThing
         { clientThingNumber = serverThingNumber,
-          clientThingClientId = Nothing,
           clientThingServerId = Just sid,
           clientThingDeleted = False
         }
@@ -79,26 +77,23 @@ setupClientQuery ClientStore {..} = do
     insert_
       ClientThing
         { clientThingNumber = 0, -- Dummy value
-          clientThingClientId = Nothing,
           clientThingServerId = Just sid,
           clientThingDeleted = True
         }
 
-clientGetStoreQuery :: SqlPersistT IO (ClientStore ClientId ServerThingId ServerThing)
+clientGetStoreQuery :: SqlPersistT IO (ClientStore ClientThingId ServerThingId ServerThing)
 clientGetStoreQuery = do
   clientStoreAdded <-
-    M.fromList . map (\(Entity _ ClientThing {..}) -> (fromJust clientThingClientId, ServerThing {serverThingNumber = clientThingNumber}))
+    M.fromList . map (\(Entity cid ClientThing {..}) -> (cid, ServerThing {serverThingNumber = clientThingNumber}))
       <$> selectList
-        [ ClientThingClientId !=. Nothing,
-          ClientThingServerId ==. Nothing,
+        [ ClientThingServerId ==. Nothing,
           ClientThingDeleted ==. False
         ]
         []
   clientStoreSynced <-
     M.fromList . map (\(Entity _ ClientThing {..}) -> (fromJust clientThingServerId, ServerThing {serverThingNumber = clientThingNumber}))
       <$> selectList
-        [ ClientThingClientId ==. Nothing,
-          ClientThingServerId !=. Nothing,
+        [ ClientThingServerId !=. Nothing,
           ClientThingDeleted ==. False
         ]
         []
@@ -111,21 +106,19 @@ clientGetStoreQuery = do
         []
   pure ClientStore {..}
 
-clientMakeSyncRequestQuery :: SqlPersistT IO (SyncRequest ClientId ServerThingId ServerThing)
+clientMakeSyncRequestQuery :: SqlPersistT IO (SyncRequest ClientThingId ServerThingId ServerThing)
 clientMakeSyncRequestQuery = do
   syncRequestAdded <-
-    M.fromList . map (\(Entity _ ClientThing {..}) -> (fromJust clientThingClientId, ServerThing {serverThingNumber = clientThingNumber}))
+    M.fromList . map (\(Entity cid ClientThing {..}) -> (cid, ServerThing {serverThingNumber = clientThingNumber}))
       <$> selectList
-        [ ClientThingClientId !=. Nothing,
-          ClientThingServerId ==. Nothing,
+        [ ClientThingServerId ==. Nothing,
           ClientThingDeleted ==. False
         ]
         []
   syncRequestSynced <-
     S.fromList . map (\(Entity _ ClientThing {..}) -> fromJust clientThingServerId)
       <$> selectList
-        [ ClientThingClientId ==. Nothing,
-          ClientThingServerId !=. Nothing,
+        [ ClientThingServerId !=. Nothing,
           ClientThingDeleted ==. False
         ]
         []
@@ -138,19 +131,18 @@ clientMakeSyncRequestQuery = do
         []
   pure SyncRequest {..}
 
-clientMergeSyncResponseQuery :: SyncResponse ClientId ServerThingId ServerThing -> SqlPersistT IO ()
+clientMergeSyncResponseQuery :: SyncResponse ClientThingId ServerThingId ServerThing -> SqlPersistT IO ()
 clientMergeSyncResponseQuery sr = do
   let clientSyncProcessorSyncServerAdded m = forM_ (M.toList m) $ \(si, ServerThing {..}) ->
         insert_
           ( ClientThing
               { clientThingNumber = serverThingNumber,
-                clientThingClientId = Nothing,
                 clientThingServerId = Just si,
                 clientThingDeleted = False
               }
           )
       clientSyncProcessorSyncClientAdded m = forM_ (M.toList m) $ \(cid, sid) ->
-        updateWhere [ClientThingClientId ==. Just cid] [ClientThingClientId =. Nothing, ClientThingServerId =. Just sid]
+        update cid [ClientThingServerId =. Just sid]
       clientSyncProcessorSyncServerDeleted s = forM_ (S.toList s) $ \sid ->
         deleteWhere [ClientThingServerId ==. Just sid]
       clientSyncProcessorSyncClientDeleted s = forM_ (S.toList s) $ \sid ->

@@ -37,7 +37,7 @@ spec = modifyMaxShrinks (const 0) $ twoClientsSpec $ do
           resp1 <- serverProcessSync req1
           sstore2 <- serverGetStore
           case M.toList (syncResponseClientAdded resp1) of
-            [(ClientId 0, clientAdditionId)] -> do
+            [(_, clientAdditionId)] -> do
               let items = M.singleton clientAdditionId st :: Map ServerThingId ServerThing
               liftIO $ sstore2 `shouldBe` (ServerStore {serverStoreItems = items})
               clientMergeSyncResponse A resp1
@@ -292,13 +292,13 @@ setupUnsyncedClient :: Client -> [ServerThing] -> T ()
 setupUnsyncedClient n =
   runClientDB n . setupUnsyncedClientQuery
 
-type CS = ClientStore ClientId ServerThingId ServerThing
+type CS = ClientStore ClientThingId ServerThingId ServerThing
 
-type SReq = SyncRequest ClientId ServerThingId ServerThing
+type SReq = SyncRequest ClientThingId ServerThingId ServerThing
 
 type SS = ServerStore ServerThingId ServerThing
 
-type SResp = SyncResponse ClientId ServerThingId ServerThing
+type SResp = SyncResponse ClientThingId ServerThingId ServerThing
 
 sync :: Client -> T (CS, SS, SS, CS)
 sync n = do
