@@ -9,12 +9,7 @@
 
 module TestUtils.ServerDB where
 
-import Control.Monad
 import Data.GenValidity
-import qualified Data.Map as M
-import Data.Maybe
-import Data.Mergeless
-import qualified Data.Set as S
 import Database.Persist.Sql
 import Database.Persist.TH
 import GHC.Generics (Generic)

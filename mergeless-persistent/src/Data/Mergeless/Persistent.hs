@@ -11,7 +11,10 @@ module Data.Mergeless.Persistent
     -- * Server side
     serverProcessSyncQuery,
 
-    -- ** Utils
+    -- * Utils
+    setupUnsyncedClientQuery,
+    setupClientQuery,
+    clientGetStoreQuery,
     serverGetStoreQuery,
     setupServerQuery,
   )
@@ -72,7 +75,7 @@ clientMergeSyncResponseQuery ::
     PersistEntityBackend clientRecord ~ SqlBackend,
     PersistEntityBackend serverRecord ~ SqlBackend
   ) =>
-  -- | Create an un-deleted record on the client side
+  -- | Create an un-deleted synced record on the client side
   (Key serverRecord -> serverRecord -> clientRecord) ->
   EntityField clientRecord (Maybe (Key serverRecord)) ->
   EntityField clientRecord Bool ->
@@ -122,6 +125,84 @@ serverProcessSyncQuery idField sr = do
             pure $ (,) cid <$> mid
       proc = ServerSyncProcessor {..}
   processServerSyncCustom proc sr
+
+-- | Setup an unsynced client store
+--
+-- You shouldn't need this.
+setupUnsyncedClientQuery ::
+  (PersistEntity clientRecord, PersistEntityBackend clientRecord ~ SqlBackend) =>
+  (serverRecord -> clientRecord) ->
+  [serverRecord] ->
+  SqlPersistT IO ()
+setupUnsyncedClientQuery func = mapM_ (insert . func)
+
+-- | Setup a client store
+--
+-- You shouldn't need this.
+setupClientQuery ::
+  ( Ord (Key serverRecord),
+    PersistEntity clientRecord,
+    PersistField (Key clientRecord),
+    PersistField (Key serverRecord),
+    PersistEntityBackend clientRecord ~ SqlBackend,
+    PersistEntityBackend serverRecord ~ SqlBackend
+  ) =>
+  -- | Create an un-deleted unsynced record on the client side
+  (serverRecord -> clientRecord) ->
+  -- | Create an un-deleted synced record on the client side
+  (Key serverRecord -> serverRecord -> clientRecord) ->
+  -- | Create an deleted synced record on the client side
+  (Key serverRecord -> clientRecord) ->
+  ClientStore (Key clientRecord) (Key serverRecord) serverRecord ->
+  SqlPersistT IO ()
+setupClientQuery funcU funcS funcD ClientStore {..} = do
+  forM_ (M.toList clientStoreAdded) $ \(cid, st) ->
+    insertKey
+      cid
+      (funcU st)
+  forM_ (M.toList clientStoreSynced) $ \(sid, st) ->
+    insert_ (funcS sid st)
+  forM_ (S.toList clientStoreDeleted) $ \sid ->
+    insert_ (funcD sid)
+
+-- | Get a client store
+--
+-- You shouldn't need this.
+clientGetStoreQuery ::
+  ( Ord (Key serverRecord),
+    PersistEntity clientRecord,
+    PersistField (Key clientRecord),
+    PersistField (Key serverRecord),
+    PersistEntityBackend clientRecord ~ SqlBackend,
+    PersistEntityBackend serverRecord ~ SqlBackend
+  ) =>
+  (clientRecord -> serverRecord) ->
+  EntityField clientRecord (Maybe (Key serverRecord)) ->
+  EntityField clientRecord Bool ->
+  SqlPersistT IO (ClientStore (Key clientRecord) (Key serverRecord) serverRecord)
+clientGetStoreQuery func serverIdField deletedField = do
+  clientStoreAdded <-
+    M.fromList . map (\(Entity cid ct) -> (cid, func ct))
+      <$> selectList
+        [ serverIdField ==. Nothing,
+          deletedField ==. False
+        ]
+        []
+  clientStoreSynced <-
+    M.fromList . map (\e@(Entity _ ct) -> (fromJust (e ^. fieldLens serverIdField), func ct))
+      <$> selectList
+        [ serverIdField !=. Nothing,
+          deletedField ==. False
+        ]
+        []
+  clientStoreDeleted <-
+    S.fromList . map (\e -> fromJust (e ^. fieldLens serverIdField))
+      <$> selectList
+        [ serverIdField !=. Nothing,
+          deletedField ==. True
+        ]
+        []
+  pure ClientStore {..}
 
 -- | Get the server store from the database
 --

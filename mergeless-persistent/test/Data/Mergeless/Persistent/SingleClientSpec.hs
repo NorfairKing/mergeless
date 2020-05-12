@@ -104,9 +104,6 @@ runServerDB func = do
   pool <- asks testEnvServerPool
   liftIO $ runSqlPool func pool
 
-setupUnsyncedClient :: [ServerThing] -> T ()
-setupUnsyncedClient = runClientDB . setupUnsyncedClientQuery
-
 type CS = ClientStore ClientThingId ServerThingId ServerThing
 
 type SReq = SyncRequest ClientThingId ServerThingId ServerThing
@@ -126,14 +123,17 @@ sync = do
   cstore2 <- clientGetStore
   pure (cstore1, sstore1, sstore2, cstore2)
 
+setupUnsyncedClient :: [ServerThing] -> T ()
+setupUnsyncedClient = runClientDB . setupUnsyncedClientQuery makeUnsyncedClientThing
+
 setupClient :: CS -> T ()
-setupClient = runClientDB . setupClientQuery
+setupClient = runClientDB . setupClientQuery makeUnsyncedClientThing makeSyncedClientThing makeDeletedClientThing
 
 setupServer :: SS -> T ()
 setupServer = runServerDB . setupServerQuery
 
 clientGetStore :: T CS
-clientGetStore = runClientDB clientGetStoreQuery
+clientGetStore = runClientDB $ clientGetStoreQuery makeServerThing ClientThingServerId ClientThingDeleted
 
 clientMakeSyncRequest :: T SReq
 clientMakeSyncRequest = runClientDB $ clientMakeSyncRequestQuery makeServerThing ClientThingServerId ClientThingDeleted
@@ -145,7 +145,7 @@ serverProcessSync :: SReq -> T SResp
 serverProcessSync = runServerDB . serverProcessSyncQuery ServerThingId
 
 clientMergeSyncResponse :: SResp -> T ()
-clientMergeSyncResponse = runClientDB . clientMergeSyncResponseQuery makeClientThing ClientThingServerId ClientThingDeleted
+clientMergeSyncResponse = runClientDB . clientMergeSyncResponseQuery makeSyncedClientThing ClientThingServerId ClientThingDeleted
 
 data TestEnv
   = TestEnv
