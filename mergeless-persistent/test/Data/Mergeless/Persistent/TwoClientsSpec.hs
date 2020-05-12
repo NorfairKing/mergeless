@@ -320,7 +320,7 @@ clientGetStore :: Client -> T CS
 clientGetStore n = runClientDB n clientGetStoreQuery
 
 clientMakeSyncRequest :: Client -> T SReq
-clientMakeSyncRequest n = runClientDB n clientMakeSyncRequestQuery
+clientMakeSyncRequest n = runClientDB n $ clientMakeSyncRequestQuery makeServerThing ClientThingServerId ClientThingDeleted
 
 serverGetStore :: T SS
 serverGetStore = runServerDB serverGetStoreQuery

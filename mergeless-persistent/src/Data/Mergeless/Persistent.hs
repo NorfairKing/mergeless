@@ -4,7 +4,10 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Data.Mergeless.Persistent
-  ( -- * Server side
+  ( -- * Client side
+    clientMakeSyncRequestQuery,
+
+    -- * Server side
     serverProcessSyncQuery,
 
     -- ** Utils
@@ -20,6 +23,44 @@ import Data.Mergeless
 import qualified Data.Set as S
 import Database.Persist
 import Database.Persist.Sql
+import Lens.Micro
+
+-- | Make a sync request on the server side
+clientMakeSyncRequestQuery ::
+  ( Ord (Key serverRecord),
+    PersistEntity clientRecord,
+    PersistField (Key clientRecord),
+    PersistField (Key serverRecord),
+    PersistEntityBackend clientRecord ~ SqlBackend,
+    PersistEntityBackend serverRecord ~ SqlBackend
+  ) =>
+  (clientRecord -> serverRecord) ->
+  EntityField clientRecord (Maybe (Key serverRecord)) ->
+  EntityField clientRecord Bool ->
+  SqlPersistT IO (SyncRequest (Key clientRecord) (Key serverRecord) serverRecord)
+clientMakeSyncRequestQuery func serverIdField deletedField = do
+  syncRequestAdded <-
+    M.fromList . map (\(Entity cid ct) -> (cid, func ct))
+      <$> selectList
+        [ serverIdField ==. Nothing,
+          deletedField ==. False
+        ]
+        []
+  syncRequestSynced <-
+    S.fromList . map (\e -> fromJust (e ^. fieldLens serverIdField))
+      <$> selectList
+        [ serverIdField !=. Nothing,
+          deletedField ==. False
+        ]
+        []
+  syncRequestDeleted <-
+    S.fromList . map (\e -> fromJust (e ^. fieldLens serverIdField))
+      <$> selectList
+        [ serverIdField !=. Nothing,
+          deletedField ==. True
+        ]
+        []
+  pure SyncRequest {..}
 
 -- | Process a sync query on the server side.
 serverProcessSyncQuery ::

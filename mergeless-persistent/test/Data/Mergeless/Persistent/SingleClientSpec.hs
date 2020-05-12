@@ -136,7 +136,7 @@ clientGetStore :: T CS
 clientGetStore = runClientDB clientGetStoreQuery
 
 clientMakeSyncRequest :: T SReq
-clientMakeSyncRequest = runClientDB clientMakeSyncRequestQuery
+clientMakeSyncRequest = runClientDB $ clientMakeSyncRequestQuery makeServerThing ClientThingServerId ClientThingDeleted
 
 serverGetStore :: T SS
 serverGetStore = runServerDB serverGetStoreQuery

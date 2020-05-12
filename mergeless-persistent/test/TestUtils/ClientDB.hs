@@ -106,31 +106,6 @@ clientGetStoreQuery = do
         []
   pure ClientStore {..}
 
-clientMakeSyncRequestQuery :: SqlPersistT IO (SyncRequest ClientThingId ServerThingId ServerThing)
-clientMakeSyncRequestQuery = do
-  syncRequestAdded <-
-    M.fromList . map (\(Entity cid ClientThing {..}) -> (cid, ServerThing {serverThingNumber = clientThingNumber}))
-      <$> selectList
-        [ ClientThingServerId ==. Nothing,
-          ClientThingDeleted ==. False
-        ]
-        []
-  syncRequestSynced <-
-    S.fromList . map (\(Entity _ ClientThing {..}) -> fromJust clientThingServerId)
-      <$> selectList
-        [ ClientThingServerId !=. Nothing,
-          ClientThingDeleted ==. False
-        ]
-        []
-  syncRequestDeleted <-
-    S.fromList . map (\(Entity _ ClientThing {..}) -> fromJust clientThingServerId)
-      <$> selectList
-        [ ClientThingServerId !=. Nothing,
-          ClientThingDeleted ==. True
-        ]
-        []
-  pure SyncRequest {..}
-
 clientMergeSyncResponseQuery :: SyncResponse ClientThingId ServerThingId ServerThing -> SqlPersistT IO ()
 clientMergeSyncResponseQuery sr = do
   let clientSyncProcessorSyncServerAdded m = forM_ (M.toList m) $ \(si, ServerThing {..}) ->
@@ -149,3 +124,6 @@ clientMergeSyncResponseQuery sr = do
         deleteWhere [ClientThingServerId ==. Just sid, ClientThingDeleted ==. True]
       proc = ClientSyncProcessor {..}
   mergeSyncResponseCustom proc sr
+
+makeServerThing :: ClientThing -> ServerThing
+makeServerThing ClientThing {..} = ServerThing {serverThingNumber = clientThingNumber}

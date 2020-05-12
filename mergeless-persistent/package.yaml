@@ -12,9 +12,10 @@ dependencies:
 library:
   source-dirs: src
   dependencies:
-  - mergeless
-  - persistent
   - containers
+  - mergeless
+  - microlens
+  - persistent
 
 tests:
   mergeless-persistent-test:
