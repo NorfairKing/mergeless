@@ -5,7 +5,7 @@ packages:
   - mergeless-persistent
 extra-deps:
 - github: NorfairKing/validity
-  commit: be40c0a0b0bf6a1d58f4a6a5c6770c4a544c4450
+  commit: 95ec39a2535b9c83b1163015fd2ca28317debf42
   subdirs:
   - genvalidity
   - genvalidity-aeson
@@ -19,6 +19,7 @@ extra-deps:
   - genvalidity-hspec-hashable
   - genvalidity-hspec-optics
   - genvalidity-path
+  - genvalidity-persistent
   - genvalidity-property
   - genvalidity-scientific
   - genvalidity-text
@@ -31,6 +32,7 @@ extra-deps:
   - validity-bytestring
   - validity-containers
   - validity-path
+  - validity-persistent
   - validity-primitive
   - validity-scientific
   - validity-text

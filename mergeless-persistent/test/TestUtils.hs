@@ -15,7 +15,7 @@ where
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Logger
-import Data.GenValidity
+import Data.GenValidity.Persist ()
 import qualified Data.Text as T
 import Database.Persist
 import Database.Persist.Sql
@@ -24,20 +24,6 @@ import Path
 import Path.IO
 import TestUtils.ClientDB
 import TestUtils.ServerDB
-
-instance Validity (Key a) where
-  validate = trivialValidation
-
-instance Validity a => Validity (Entity a) where
-  validate e = mconcat [delve "entityKey" $ entityKey e, delve "entityVal" $ entityVal e]
-
-instance ToBackendKey SqlBackend record => GenUnchecked (Key record) where
-  genUnchecked = toSqlKey <$> genUnchecked
-  shrinkUnchecked = fmap toSqlKey . shrinkValid . fromSqlKey
-
-instance ToBackendKey SqlBackend record => GenValid (Key record) where
-  genValid = toSqlKey <$> genValid
-  shrinkValid = shrinkUnchecked
 
 withServerPool :: (ConnectionPool -> IO a) -> IO a
 withServerPool func =
