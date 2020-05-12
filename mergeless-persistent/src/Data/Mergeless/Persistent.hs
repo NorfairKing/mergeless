@@ -6,6 +6,7 @@
 module Data.Mergeless.Persistent
   ( -- * Client side
     clientMakeSyncRequestQuery,
+    clientMergeSyncResponseQuery,
 
     -- * Server side
     serverProcessSyncQuery,
@@ -25,7 +26,7 @@ import Database.Persist
 import Database.Persist.Sql
 import Lens.Micro
 
--- | Make a sync request on the server side
+-- | Make a sync request on the client side
 clientMakeSyncRequestQuery ::
   ( Ord (Key serverRecord),
     PersistEntity clientRecord,
@@ -61,6 +62,33 @@ clientMakeSyncRequestQuery func serverIdField deletedField = do
         ]
         []
   pure SyncRequest {..}
+
+-- | Merge a sync response on the client side
+clientMergeSyncResponseQuery ::
+  ( Ord (Key serverRecord),
+    PersistEntity clientRecord,
+    PersistField (Key clientRecord),
+    PersistField (Key serverRecord),
+    PersistEntityBackend clientRecord ~ SqlBackend,
+    PersistEntityBackend serverRecord ~ SqlBackend
+  ) =>
+  -- | Create an un-deleted record on the client side
+  (Key serverRecord -> serverRecord -> clientRecord) ->
+  EntityField clientRecord (Maybe (Key serverRecord)) ->
+  EntityField clientRecord Bool ->
+  SyncResponse (Key clientRecord) (Key serverRecord) serverRecord ->
+  SqlPersistT IO ()
+clientMergeSyncResponseQuery func serverIdField deletedField sr = do
+  let clientSyncProcessorSyncServerAdded m = forM_ (M.toList m) $ \(si, st) ->
+        insert_ $ func si st
+      clientSyncProcessorSyncClientAdded m = forM_ (M.toList m) $ \(cid, sid) ->
+        update cid [serverIdField =. Just sid]
+      clientSyncProcessorSyncServerDeleted s = forM_ (S.toList s) $ \sid ->
+        deleteWhere [serverIdField ==. Just sid]
+      clientSyncProcessorSyncClientDeleted s = forM_ (S.toList s) $ \sid ->
+        deleteWhere [serverIdField ==. Just sid, deletedField ==. True]
+      proc = ClientSyncProcessor {..}
+  mergeSyncResponseCustom proc sr
 
 -- | Process a sync query on the server side.
 serverProcessSyncQuery ::

@@ -145,7 +145,7 @@ serverProcessSync :: SReq -> T SResp
 serverProcessSync = runServerDB . serverProcessSyncQuery ServerThingId
 
 clientMergeSyncResponse :: SResp -> T ()
-clientMergeSyncResponse = runClientDB . clientMergeSyncResponseQuery
+clientMergeSyncResponse = runClientDB . clientMergeSyncResponseQuery makeClientThing ClientThingServerId ClientThingDeleted
 
 data TestEnv
   = TestEnv

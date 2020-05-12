@@ -106,24 +106,13 @@ clientGetStoreQuery = do
         []
   pure ClientStore {..}
 
-clientMergeSyncResponseQuery :: SyncResponse ClientThingId ServerThingId ServerThing -> SqlPersistT IO ()
-clientMergeSyncResponseQuery sr = do
-  let clientSyncProcessorSyncServerAdded m = forM_ (M.toList m) $ \(si, ServerThing {..}) ->
-        insert_
-          ( ClientThing
-              { clientThingNumber = serverThingNumber,
-                clientThingServerId = Just si,
-                clientThingDeleted = False
-              }
-          )
-      clientSyncProcessorSyncClientAdded m = forM_ (M.toList m) $ \(cid, sid) ->
-        update cid [ClientThingServerId =. Just sid]
-      clientSyncProcessorSyncServerDeleted s = forM_ (S.toList s) $ \sid ->
-        deleteWhere [ClientThingServerId ==. Just sid]
-      clientSyncProcessorSyncClientDeleted s = forM_ (S.toList s) $ \sid ->
-        deleteWhere [ClientThingServerId ==. Just sid, ClientThingDeleted ==. True]
-      proc = ClientSyncProcessor {..}
-  mergeSyncResponseCustom proc sr
+makeClientThing :: ServerThingId -> ServerThing -> ClientThing
+makeClientThing sid ServerThing {..} =
+  ClientThing
+    { clientThingNumber = serverThingNumber,
+      clientThingDeleted = False,
+      clientThingServerId = Just sid
+    }
 
 makeServerThing :: ClientThing -> ServerThing
 makeServerThing ClientThing {..} = ServerThing {serverThingNumber = clientThingNumber}

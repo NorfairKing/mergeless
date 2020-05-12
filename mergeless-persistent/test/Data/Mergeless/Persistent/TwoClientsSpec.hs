@@ -329,7 +329,7 @@ serverProcessSync :: SReq -> T SResp
 serverProcessSync = runServerDB . serverProcessSyncQuery ServerThingId
 
 clientMergeSyncResponse :: Client -> SResp -> T ()
-clientMergeSyncResponse n = runClientDB n . clientMergeSyncResponseQuery
+clientMergeSyncResponse n = runClientDB n . clientMergeSyncResponseQuery makeClientThing ClientThingServerId ClientThingDeleted
 
 data Client = A | B
   deriving (Show, Eq)
