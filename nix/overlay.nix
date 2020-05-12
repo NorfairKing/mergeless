@@ -14,7 +14,7 @@ with final.haskell.lib;
         );
       mergeless-persistent =
         failOnAllWarnings (
-          final.haskellPackages.callCabal2nix "mergeless-persistent" (final.gitignoreSource ../mergeless) {}
+          final.haskellPackages.callCabal2nix "mergeless-persistent" (final.gitignoreSource ../mergeless-persistent) {}
         );
     };
   haskellPackages =
