@@ -13,6 +13,7 @@ import Data.GenValidity.Mergeless ()
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Mergeless
+import Data.Mergeless.Persistent
 import qualified Data.Set as S
 import Database.Persist.Sql
 import Test.Hspec
@@ -325,7 +326,7 @@ serverGetStore :: T SS
 serverGetStore = runServerDB serverGetStoreQuery
 
 serverProcessSync :: SReq -> T SResp
-serverProcessSync = runServerDB . serverProcessSyncQuery
+serverProcessSync = runServerDB . serverProcessSyncQuery ServerThingId
 
 clientMergeSyncResponse :: Client -> SResp -> T ()
 clientMergeSyncResponse n = runClientDB n . clientMergeSyncResponseQuery

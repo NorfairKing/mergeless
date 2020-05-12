@@ -14,6 +14,7 @@ library:
   dependencies:
   - mergeless
   - persistent
+  - containers
 
 tests:
   mergeless-persistent-test:
