@@ -23,9 +23,9 @@ main =
       bgroup
         "Collection"
         [ genValidBench @ClientId,
-          genValidBench @(ClientStore Int Bool),
-          genValidBench @(SyncRequest Int Bool),
-          genValidBench @(SyncResponse Int Bool),
+          genValidBench @(ClientStore ClientId Int Bool),
+          genValidBench @(SyncRequest ClientId Int Bool),
+          genValidBench @(SyncResponse ClientId Int Bool),
           genValidBench @(ServerStore Int Bool)
         ]
     ]

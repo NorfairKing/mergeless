@@ -9,8 +9,7 @@ where
 
 import Control.Monad
 import Control.Monad.Reader
-import Data.GenValidity.Mergeless
-import Data.List
+import Data.GenValidity.Mergeless ()
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Mergeless
@@ -18,7 +17,6 @@ import qualified Data.Set as S
 import Database.Persist.Sql
 import Test.Hspec
 import Test.Hspec.QuickCheck
-import Test.QuickCheck
 import Test.Validity
 import TestUtils
 
@@ -181,7 +179,7 @@ spec = modifyMaxShrinks (const 0) $ twoClientsSpec $ do
             resp2 `shouldBe` (emptySyncResponse {syncResponseServerAdded = items})
             sstore3 `shouldBe` sstore2
           -- Client B merges the response
-          cBstore2 <- clientMergeSyncResponse B resp2
+          clientMergeSyncResponse B resp2
           cBstore2 <- clientGetStore B
           liftIO $ cBstore2 `shouldBe` (emptyClientStore {clientStoreSynced = items})
           -- Client A and Client B now have the same store

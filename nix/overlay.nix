@@ -1,21 +1,19 @@
 final: previous:
 with final.haskell.lib;
-
+let
+  mergelessPkg = name:
+    doBenchmark (
+      failOnAllWarnings (
+        final.haskellPackages.callCabal2nix name (final.gitignoreSource (../. + "/${name}")) {}
+      )
+    );
+in
 {
   mergelessPackages =
     {
-      mergeless =
-        failOnAllWarnings (
-          final.haskellPackages.callCabal2nix "mergeless" (final.gitignoreSource ../mergeless) {}
-        );
-      genvalidity-mergeless =
-        failOnAllWarnings (
-          final.haskellPackages.callCabal2nix "genvalidity-mergeless" (final.gitignoreSource ../genvalidity-mergeless) {}
-        );
-      mergeless-persistent =
-        failOnAllWarnings (
-          final.haskellPackages.callCabal2nix "mergeless-persistent" (final.gitignoreSource ../mergeless-persistent) {}
-        );
+      mergeless = mergelessPkg "mergeless";
+      genvalidity-mergeless = mergelessPkg "genvalidity-mergeless";
+      mergeless-persistent = mergelessPkg "mergeless-persistent";
     };
   haskellPackages =
     previous.haskellPackages.override (
