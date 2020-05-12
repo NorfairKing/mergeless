@@ -30,22 +30,22 @@ import Test.Validity.Aeson
 
 spec :: Spec
 spec = do
-  genValidSpec @(ClientStore Int Int)
-  jsonSpecOnValid @(ClientStore Int Int)
-  genValidSpec @(SyncRequest Int Int)
-  jsonSpecOnValid @(SyncRequest Int Int)
-  genValidSpec @(SyncResponse Int Int)
-  jsonSpecOnValid @(SyncResponse Int Int)
+  genValidSpec @(ClientStore ClientId Int Int)
+  jsonSpecOnValid @(ClientStore ClientId Int Int)
+  genValidSpec @(SyncRequest ClientId Int Int)
+  jsonSpecOnValid @(SyncRequest ClientId Int Int)
+  genValidSpec @(SyncResponse ClientId Int Int)
+  jsonSpecOnValid @(SyncResponse ClientId Int Int)
   genValidSpec @(ServerStore Int Int)
   jsonSpecOnValid @(ServerStore Int Int)
-  describe "emptyStore" $ it "is valid" $ shouldBeValid (emptyClientStore @Int @Int)
+  describe "emptyStore" $ it "is valid" $ shouldBeValid (emptyClientStore @Int @Int @Int)
   describe "storeSize" $ do
-    it "does not crash" $ producesValidsOnValids (storeSize @Int @Int)
+    it "does not crash" $ producesValidsOnValids (storeSize @Int @Int @Int)
     specify "adding an item makes the store bigger"
       $ forAllValid
       $ \store ->
         forAllValid $ \added -> do
-          let size1 = storeSize (store :: ClientStore Int Int)
+          let size1 = storeSize (store :: ClientStore Int Int Int)
           let store' = addItemToClientStore added store
           let size2 = storeSize store'
           size2 `shouldBe` (size1 + 1)
@@ -53,7 +53,7 @@ spec = do
       $ forAllValid
       $ \store ->
         forAllValid $ \added ->
-          let size1 = storeSize (store :: ClientStore Int Int)
+          let size1 = storeSize (store :: ClientStore Int Int Int)
               store' = addItemToClientStore added store
            in case sortOn (Down . fst) $ M.toList (clientStoreAdded store') of
                 [] -> expectationFailure "Expected a nonempty list"
@@ -66,34 +66,34 @@ spec = do
       $ \store ->
         forAll (genValid `suchThat` (\uuid -> not $ M.member uuid $ clientStoreSynced store)) $ \uuid ->
           forAllValid $ \synced ->
-            let size1 = storeSize (store :: ClientStore Int Int)
+            let size1 = storeSize (store :: ClientStore Int Int Int)
                 store' = store {clientStoreSynced = M.insert uuid synced $ clientStoreSynced store}
                 store'' = deleteSyncedFromClientStore uuid store'
                 size2 = storeSize store''
              in size2 `shouldBe` size1
   describe "addItemToClientStore"
     $ it "produces valid stores"
-    $ producesValidsOnValids2 (addItemToClientStore @Int @Int)
+    $ producesValidsOnValids2 (addItemToClientStore @Int @Int @Int)
   describe "deleteUnsyncedFromClientStore"
     $ it "produces valid stores"
-    $ producesValidsOnValids2 (deleteUnsyncedFromClientStore @Int @Int)
+    $ producesValidsOnValids2 (deleteUnsyncedFromClientStore @Int @Int @Int)
   describe "deleteSyncedFromClientStore"
     $ it "produces valid stores"
-    $ producesValidsOnValids2 (deleteSyncedFromClientStore @Int @Int)
+    $ producesValidsOnValids2 (deleteSyncedFromClientStore @Int @Int @Int)
   describe "emptySyncRequest"
     $ it "is valid"
-    $ shouldBeValid (emptySyncRequest @Int @Int)
+    $ shouldBeValid (emptySyncRequest @Int @Int @Int)
   describe "makeSyncRequest"
     $ it "produces valid sync requests"
-    $ producesValidsOnValids (makeSyncRequest @Int @Int)
+    $ producesValidsOnValids (makeSyncRequest @Int @Int @Int)
   describe "mergeSyncResponse" $ do
-    it "produces valid sync stores" $ producesValidsOnValids2 (mergeSyncResponse @Int @Int)
+    it "produces valid sync stores" $ producesValidsOnValids2 (mergeSyncResponse @Int @Int @Int)
     it "adds the single item that the server tells it to add to an empty client store"
       $ forAllValid
       $ \cid ->
         forAllValid $ \a ->
           forAllValid $ \u -> do
-            let cstore1 = emptyClientStore {clientStoreAdded = M.singleton cid (a :: Int)}
+            let cstore1 = emptyClientStore {clientStoreAdded = M.singleton (cid :: ClientId) (a :: Int)}
                 resp = emptySyncResponse {syncResponseClientAdded = M.singleton cid (u :: Int)}
                 cstore2 = mergeSyncResponse cstore1 resp
             clientStoreSynced cstore2 `shouldBe` M.singleton u a
@@ -101,7 +101,7 @@ spec = do
       $ forAllValid
       $ \cs ->
         forAllValid $ \sr -> do
-          let cs' = mergeSyncResponse @Int @Int cs sr
+          let cs' = mergeSyncResponse @ClientId @Int @Int cs sr
           clientStoreDeleted cs'
             `shouldBe` (clientStoreDeleted cs `S.difference` syncResponseClientDeleted sr)
   describe "processServerSync"
@@ -110,10 +110,10 @@ spec = do
     $ processServerSync genD
 
 serverSyncSpec ::
-  forall a i m.
-  (Show i, Ord i, GenValid i, Show a, Ord a, GenValid a, MonadIO m) =>
+  forall a si m.
+  (Show si, Ord si, GenValid si, Show a, Ord a, GenValid a, MonadIO m) =>
   (forall r. m r -> IO r) ->
-  (ServerStore i a -> SyncRequest i a -> m (SyncResponse i a, ServerStore i a)) ->
+  (ServerStore si a -> SyncRequest ClientId si a -> m (SyncResponse ClientId si a, ServerStore si a)) ->
   Spec
 serverSyncSpec eval func = do
   describe "Single client" $ do

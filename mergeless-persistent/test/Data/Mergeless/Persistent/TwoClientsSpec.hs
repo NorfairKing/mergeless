@@ -292,13 +292,13 @@ setupUnsyncedClient :: Client -> [ServerThing] -> T ()
 setupUnsyncedClient n =
   runClientDB n . setupUnsyncedClientQuery
 
-type CS = ClientStore ServerThingId ServerThing
+type CS = ClientStore ClientId ServerThingId ServerThing
 
-type SReq = SyncRequest ServerThingId ServerThing
+type SReq = SyncRequest ClientId ServerThingId ServerThing
 
 type SS = ServerStore ServerThingId ServerThing
 
-type SResp = SyncResponse ServerThingId ServerThing
+type SResp = SyncResponse ClientId ServerThingId ServerThing
 
 sync :: Client -> T (CS, SS, SS, CS)
 sync n = do

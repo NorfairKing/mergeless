@@ -45,7 +45,7 @@ setupServerQuery ServerStore {..} = forM_ (M.toList serverStoreItems) $ \(i, e) 
 serverGetStoreQuery :: SqlPersistT IO (ServerStore ServerThingId ServerThing)
 serverGetStoreQuery = ServerStore . M.fromList . map (\(Entity stid st) -> (stid, st)) <$> selectList [] []
 
-serverProcessSyncQuery :: SyncRequest ServerThingId ServerThing -> SqlPersistT IO (SyncResponse ServerThingId ServerThing)
+serverProcessSyncQuery :: Ord ci => SyncRequest ci ServerThingId ServerThing -> SqlPersistT IO (SyncResponse ci ServerThingId ServerThing)
 serverProcessSyncQuery sr = do
   let serverSyncProcessorDeleteMany s = do
         deleteWhere [ServerThingId <-. S.toList s] -- FIXME this operator can crash

@@ -57,7 +57,7 @@ setupUnsyncedClientQuery =
           }
       pure $ succ cid
 
-setupClientQuery :: ClientStore ServerThingId ServerThing -> SqlPersistT IO ()
+setupClientQuery :: ClientStore ClientId ServerThingId ServerThing -> SqlPersistT IO ()
 setupClientQuery ClientStore {..} = do
   forM_ (M.toList clientStoreAdded) $ \(cid, ServerThing {..}) ->
     insert_
@@ -84,7 +84,7 @@ setupClientQuery ClientStore {..} = do
           clientThingDeleted = True
         }
 
-clientGetStoreQuery :: SqlPersistT IO (ClientStore ServerThingId ServerThing)
+clientGetStoreQuery :: SqlPersistT IO (ClientStore ClientId ServerThingId ServerThing)
 clientGetStoreQuery = do
   clientStoreAdded <-
     M.fromList . map (\(Entity _ ClientThing {..}) -> (fromJust clientThingClientId, ServerThing {serverThingNumber = clientThingNumber}))
@@ -111,7 +111,7 @@ clientGetStoreQuery = do
         []
   pure ClientStore {..}
 
-clientMakeSyncRequestQuery :: SqlPersistT IO (SyncRequest ServerThingId ServerThing)
+clientMakeSyncRequestQuery :: SqlPersistT IO (SyncRequest ClientId ServerThingId ServerThing)
 clientMakeSyncRequestQuery = do
   syncRequestAdded <-
     M.fromList . map (\(Entity _ ClientThing {..}) -> (fromJust clientThingClientId, ServerThing {serverThingNumber = clientThingNumber}))
@@ -138,7 +138,7 @@ clientMakeSyncRequestQuery = do
         []
   pure SyncRequest {..}
 
-clientMergeSyncResponseQuery :: SyncResponse ServerThingId ServerThing -> SqlPersistT IO ()
+clientMergeSyncResponseQuery :: SyncResponse ClientId ServerThingId ServerThing -> SqlPersistT IO ()
 clientMergeSyncResponseQuery sr = do
   let clientSyncProcessorSyncServerAdded m = forM_ (M.toList m) $ \(si, ServerThing {..}) ->
         insert_
