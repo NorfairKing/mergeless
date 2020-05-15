@@ -10,9 +10,11 @@ module Data.Mergeless.Persistent
 
     -- * Server side
     serverProcessSyncQuery,
+    serverProcessSyncWithCustomIdQuery,
 
     -- ** Sync Processor
     serverSyncProcessor,
+    serverSyncProcessorWithCustomId,
 
     -- * Utils
     setupUnsyncedClientQuery,
@@ -102,6 +104,7 @@ serverProcessSyncQuery ::
   SqlPersistT IO (SyncResponse ci (Key record) a)
 serverProcessSyncQuery funcTo funcFrom = processServerSyncCustom $ serverSyncProcessor funcTo funcFrom
 
+-- | A server sync processor that uses the sqlkey of the record as the name
 serverSyncProcessor ::
   ( PersistEntity record,
     PersistEntityBackend record ~ SqlBackend
@@ -116,6 +119,46 @@ serverSyncProcessor funcTo funcFrom =
     serverSyncProcessorAddItems = mapM $ insert . funcFrom
     serverSyncProcessorDeleteItems s = do
       mapM_ delete s
+      pure s
+
+-- | Process a sync query on the server side with a custom id.
+serverProcessSyncWithCustomIdQuery ::
+  ( Ord sid,
+    PersistEntity record,
+    PersistField sid,
+    PersistEntityBackend record ~ SqlBackend
+  ) =>
+  SqlPersistT IO sid ->
+  EntityField record sid ->
+  (Entity record -> (sid, a)) ->
+  (sid -> a -> record) ->
+  SyncRequest ci sid a ->
+  SqlPersistT IO (SyncResponse ci sid a)
+serverProcessSyncWithCustomIdQuery genId idField funcTo funcFrom = processServerSyncCustom $ serverSyncProcessorWithCustomId genId idField funcTo funcFrom
+
+-- | A server sync processor that uses a custom key as the name
+serverSyncProcessorWithCustomId ::
+  ( Ord sid,
+    PersistEntity record,
+    PersistField sid,
+    PersistEntityBackend record ~ SqlBackend
+  ) =>
+  SqlPersistT IO sid ->
+  EntityField record sid ->
+  (Entity record -> (sid, a)) ->
+  (sid -> a -> record) ->
+  ServerSyncProcessor ci sid a (SqlPersistT IO)
+serverSyncProcessorWithCustomId genId idField funcTo funcFrom =
+  ServerSyncProcessor {..}
+  where
+    serverSyncProcessorRead = M.fromList . map funcTo <$> selectList [] []
+    serverSyncProcessorAddItems = mapM $ \a -> do
+      sid <- genId
+      let record = funcFrom sid a
+      insert_ record
+      pure sid
+    serverSyncProcessorDeleteItems s = do
+      forM_ s $ \sid -> deleteWhere [idField ==. sid]
       pure s
 
 -- | Setup an unsynced client store
