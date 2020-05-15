@@ -13,7 +13,6 @@ import Data.GenValidity.Mergeless ()
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Mergeless
-import Data.Mergeless.Persistent
 import qualified Data.Set as S
 import Database.Persist.Sql
 import Test.Hspec

@@ -106,8 +106,8 @@ serverProcessSyncQuery ::
   SqlPersistT IO (SyncResponse ci (Key record) record)
 serverProcessSyncQuery idField sr = do
   let serverSyncProcessorDeleteMany s = do
-        deleteWhere [idField <-. S.toList s] -- FIXME this operator can crash
-        pure s -- Just assume that everything was deleted.
+        mapM_ delete $ S.toList s
+        pure s -- Just assume that everything was deleted succesfully.
       serverSyncProcessorQueryNoLongerSynced s = do
         aliases <-
           selectList [idField <-. S.toList s] [] -- FIXME this operator can crash
