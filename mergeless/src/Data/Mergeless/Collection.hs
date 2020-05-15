@@ -228,14 +228,14 @@ instance (Validity ci, Validity si, Validity a, Ord ci, Ord si, Show ci) => Vali
 instance (FromJSON ci, FromJSON si, FromJSON a, FromJSONKey ci, Ord ci, Ord si, Ord a) => FromJSON (SyncRequest ci si a) where
   parseJSON =
     withObject "SyncRequest" $ \o ->
-      SyncRequest <$> o .: "added" <*> o .: "synced" <*> o .: "undeleted"
+      SyncRequest <$> o .: "added" <*> o .: "synced" <*> o .: "deleted"
 
 instance (ToJSON ci, ToJSON si, ToJSON a, ToJSONKey ci) => ToJSON (SyncRequest ci si a) where
   toJSON SyncRequest {..} =
     object
       [ "added" .= syncRequestAdded,
         "synced" .= syncRequestSynced,
-        "undeleted" .= syncRequestDeleted
+        "deleted" .= syncRequestDeleted
       ]
 
 emptySyncRequest :: SyncRequest ci si a
