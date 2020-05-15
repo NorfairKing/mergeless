@@ -43,4 +43,4 @@ serverGetStoreThingQuery :: SqlPersistT IO (ServerStore ServerThingId ServerThin
 serverGetStoreThingQuery = serverGetStoreQuery
 
 serverProcessSyncThingQuery :: Ord cid => SyncRequest cid ServerThingId ServerThing -> SqlPersistT IO (SyncResponse cid ServerThingId ServerThing)
-serverProcessSyncThingQuery = serverProcessSyncQuery ServerThingId
+serverProcessSyncThingQuery = serverProcessSyncQuery

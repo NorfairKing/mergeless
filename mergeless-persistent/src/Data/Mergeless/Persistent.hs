@@ -11,6 +11,9 @@ module Data.Mergeless.Persistent
     -- * Server side
     serverProcessSyncQuery,
 
+    -- ** Sync Processor
+    serverSyncProcessor,
+
     -- * Utils
     setupUnsyncedClientQuery,
     setupClientQuery,
@@ -101,30 +104,26 @@ serverProcessSyncQuery ::
     PersistField (Key record),
     PersistEntityBackend record ~ SqlBackend
   ) =>
-  EntityField record (Key record) ->
   SyncRequest ci (Key record) record ->
   SqlPersistT IO (SyncResponse ci (Key record) record)
-serverProcessSyncQuery idField sr = do
-  let serverSyncProcessorDeleteMany s = do
-        mapM_ delete $ S.toList s
-        pure s -- Just assume that everything was deleted succesfully.
-      serverSyncProcessorQueryNoLongerSynced s = do
-        aliases <-
-          selectList [idField <-. S.toList s] [] -- FIXME this operator can crash
-        let inSButNotInStore =
-              s `S.difference` S.fromList (map entityKey aliases)
-        pure inSButNotInStore
-      serverSyncProcessorQueryNewRemote s =
-        M.fromList . map (\(Entity ti t) -> (ti, t))
-          <$> selectList [idField /<-. S.toList s] [] -- FIXME this operator can crash
-      serverSyncProcessorInsertMany m =
-        fmap (M.fromList . catMaybes)
-          $ forM (M.toList m)
-          $ \(cid, t) -> do
-            mid <- insertUnique t
-            pure $ (,) cid <$> mid
-      proc = ServerSyncProcessor {..}
-  processServerSyncCustom proc sr
+serverProcessSyncQuery = processServerSyncCustom serverSyncProcessor
+
+serverSyncProcessor ::
+  ( Ord ci,
+    Ord record,
+    PersistEntity record,
+    PersistField (Key record),
+    PersistEntityBackend record ~ SqlBackend
+  ) =>
+  ServerSyncProcessor ci (Key record) record (SqlPersistT IO)
+serverSyncProcessor =
+  ServerSyncProcessor {..}
+  where
+    serverSyncProcessorRead = M.fromList . map (\(Entity i record) -> (i, record)) <$> selectList [] []
+    serverSyncProcessorAddItems = mapM insert
+    serverSyncProcessorDeleteItems s = do
+      mapM_ delete s
+      pure s
 
 -- | Setup an unsynced client store
 --

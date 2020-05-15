@@ -362,23 +362,12 @@ mergeSyncResponseCustom ClientSyncProcessor {..} SyncResponse {..} = do
 -- | A record of the basic operations that are necessary to build a synchronisation processor.
 data ServerSyncProcessor ci si a m
   = ServerSyncProcessor
-      { -- | Delete the items with an identifier in the given set, return the set that was indeed deleted or did not exist.
-        -- In particular, return the identifiers of the items that the client should forget about.
-        serverSyncProcessorDeleteMany :: Set si -> m (Set si),
-        -- | Query the identifiers of the items that are in the given set but not in the store.
-        serverSyncProcessorQueryNoLongerSynced :: Set si -> m (Set si),
-        -- | Query the items that are in store, but not in the given set.
-        serverSyncProcessorQueryNewRemote :: Set si -> m (Map si a),
-        -- | Insert a set of items into the store.
-        serverSyncProcessorInsertMany :: Map ci a -> m (Map ci si)
+      { serverSyncProcessorRead :: m (Map si a),
+        serverSyncProcessorAddItems :: Map ci a -> m (Map ci si),
+        serverSyncProcessorDeleteItems :: Set si -> m (Set si)
       }
   deriving (Generic)
 
--- | Process a server-side synchronisation request using a custom synchronisation processor
---
--- WARNING: The identifier generation function must produce newly unique identifiers such that each new item gets a unique identifier.
---
--- You can use this function with deterministically-random identifiers or incrementing identifiers.
 processServerSyncCustom ::
   forall ci si a m.
   (Ord ci, Ord si, Ord a, Monad m) =>
@@ -386,30 +375,12 @@ processServerSyncCustom ::
   SyncRequest ci si a ->
   m (SyncResponse ci si a)
 processServerSyncCustom ServerSyncProcessor {..} SyncRequest {..} = do
-  deletedFromClient <- deleteUndeleted
-  -- First we delete the items that were deleted locally but not yet remotely.
-  -- Then we find the items that have been deleted remotely but not locally
-  deletedRemotely <- syncItemsToBeDeletedLocally
-  -- Then we find the items that have appeared remotely but aren't known locally
-  newRemoteItems <- syncNewRemoteItems
-  -- Then we add the items that should be added.
-  newLocalItems <- syncAddedItems
-  pure
-    SyncResponse
-      { syncResponseClientAdded = newLocalItems,
-        syncResponseClientDeleted = deletedFromClient,
-        syncResponseServerAdded = newRemoteItems,
-        syncResponseServerDeleted = deletedRemotely
-      }
-  where
-    deleteUndeleted :: m (Set si)
-    deleteUndeleted = serverSyncProcessorDeleteMany syncRequestDeleted
-    syncItemsToBeDeletedLocally :: m (Set si)
-    syncItemsToBeDeletedLocally = serverSyncProcessorQueryNoLongerSynced syncRequestSynced
-    syncNewRemoteItems :: m (Map si a)
-    syncNewRemoteItems = serverSyncProcessorQueryNewRemote syncRequestSynced
-    syncAddedItems :: m (Map ci si)
-    syncAddedItems = serverSyncProcessorInsertMany syncRequestAdded
+  serverItems <- serverSyncProcessorRead
+  let syncResponseServerAdded = serverItems `M.difference` toMap (syncRequestSynced `S.union` syncRequestDeleted)
+  let syncResponseServerDeleted = syncRequestSynced `S.difference` M.keysSet serverItems
+  syncResponseClientDeleted <- serverSyncProcessorDeleteItems syncRequestDeleted
+  syncResponseClientAdded <- serverSyncProcessorAddItems syncRequestAdded
+  pure SyncResponse {..}
 
 -- | A central store of items with identifiers of type @i@ and values of type @a@
 newtype ServerStore si a
@@ -440,10 +411,9 @@ processServerSync genUuid cs sr =
   flip runStateT cs $
     processServerSyncCustom
       ServerSyncProcessor
-        { serverSyncProcessorDeleteMany = deleteMany,
-          serverSyncProcessorQueryNoLongerSynced = queryNoLongerSynced,
-          serverSyncProcessorQueryNewRemote = queryNewRemote,
-          serverSyncProcessorInsertMany = insertMany
+        { serverSyncProcessorRead = gets serverStoreItems,
+          serverSyncProcessorDeleteItems = deleteMany,
+          serverSyncProcessorAddItems = insertMany
         }
       sr
   where
@@ -451,12 +421,6 @@ processServerSync genUuid cs sr =
     deleteMany s = do
       modC (`diffSet` s)
       pure s
-    queryNoLongerSynced :: Set si -> StateT (ServerStore si a) m (Set si)
-    queryNoLongerSynced s = query ((s `S.difference`) . M.keysSet)
-    queryNewRemote :: Set si -> StateT (ServerStore si a) m (Map si a)
-    queryNewRemote s = query (`diffSet` s)
-    query :: (Map si a -> b) -> StateT (ServerStore si a) m b
-    query func = gets $ func . serverStoreItems
     insertMany :: Map ci a -> StateT (ServerStore si a) m (Map ci si)
     insertMany =
       traverse $ \a -> do
