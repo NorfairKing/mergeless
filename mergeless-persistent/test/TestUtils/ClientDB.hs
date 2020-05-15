@@ -73,6 +73,3 @@ makeDeletedClientThing sid =
       clientThingDeleted = True,
       clientThingServerId = Just sid
     }
-
-makeServerThing :: ClientThing -> ServerThing
-makeServerThing ClientThing {..} = ServerThing {serverThingNumber = clientThingNumber}

@@ -11,6 +11,9 @@ dependencies:
 
 library:
   source-dirs: src
+  ghc-options:
+  - -Wall
+  - -fwarn-redundant-constraints
   dependencies:
   - containers
   - mergeless

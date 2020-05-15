@@ -119,7 +119,7 @@ data ClientStore ci si a
 
 instance (NFData ci, NFData si, NFData a) => NFData (ClientStore ci si a)
 
-instance (Validity ci, Validity si, Validity a, Show ci, Show si, Show a, Ord ci, Ord si, Ord a) => Validity (ClientStore ci si a) where
+instance (Validity ci, Validity si, Validity a, Show ci, Show si, Ord ci, Ord si) => Validity (ClientStore ci si a) where
   validate cs@ClientStore {..} =
     mconcat
       [ genericValidate cs,
@@ -162,7 +162,7 @@ clientStoreIds ClientStore {..} = M.keysSet clientStoreSynced `S.union` clientSt
 -- This will take care of the uniqueness constraint of the 'ci's in the map.
 --
 -- The values wrap around when reaching 'maxBound'.
-addItemToClientStore :: (Enum ci, Bounded ci, Ord ci, Ord si, Ord a) => a -> ClientStore ci si a -> ClientStore ci si a
+addItemToClientStore :: (Enum ci, Bounded ci, Ord ci) => a -> ClientStore ci si a -> ClientStore ci si a
 addItemToClientStore a cs =
   let oldAddedItems = clientStoreAdded cs
       newAddedItems =
@@ -191,10 +191,10 @@ findFreeSpot m =
       | ci == maxBound = minBound
       | otherwise = succ ci
 
-deleteUnsyncedFromClientStore :: (Ord ci, Ord si, Ord a) => ci -> ClientStore ci si a -> ClientStore ci si a
+deleteUnsyncedFromClientStore :: Ord ci => ci -> ClientStore ci si a -> ClientStore ci si a
 deleteUnsyncedFromClientStore cid cs = cs {clientStoreAdded = M.delete cid $ clientStoreAdded cs}
 
-deleteSyncedFromClientStore :: (Ord ci, Ord si, Ord a) => si -> ClientStore ci si a -> ClientStore ci si a
+deleteSyncedFromClientStore :: Ord si => si -> ClientStore ci si a -> ClientStore ci si a
 deleteSyncedFromClientStore i cs =
   let syncedBefore = clientStoreSynced cs
    in case M.lookup i syncedBefore of
@@ -216,7 +216,7 @@ data SyncRequest ci si a
 
 instance (NFData ci, NFData si, NFData a) => NFData (SyncRequest ci si a)
 
-instance (Validity ci, Validity si, Validity a, Ord ci, Ord si, Ord a, Show ci) => Validity (SyncRequest ci si a) where
+instance (Validity ci, Validity si, Validity a, Ord ci, Ord si, Show ci) => Validity (SyncRequest ci si a) where
   validate sr@SyncRequest {..} =
     mconcat
       [ genericValidate sr,
@@ -249,7 +249,7 @@ emptySyncRequest =
 -- | Produce a synchronisation request for a client-side store.
 --
 -- This request can then be sent to a central store for synchronisation.
-makeSyncRequest :: (Ord ci, Ord si, Ord a) => ClientStore ci si a -> SyncRequest ci si a
+makeSyncRequest :: ClientStore ci si a -> SyncRequest ci si a
 makeSyncRequest ClientStore {..} =
   SyncRequest
     { syncRequestAdded = clientStoreAdded,
@@ -269,7 +269,7 @@ data SyncResponse ci si a
 
 instance (NFData ci, NFData si, NFData a) => NFData (SyncResponse ci si a)
 
-instance (Validity ci, Validity si, Validity a, Show ci, Show si, Show a, Ord ci, Ord si, Ord a) => Validity (SyncResponse ci si a) where
+instance (Validity ci, Validity si, Validity a, Show ci, Show si, Ord ci, Ord si) => Validity (SyncResponse ci si a) where
   validate sr@SyncResponse {..} =
     mconcat
       [ genericValidate sr,
@@ -311,7 +311,7 @@ emptySyncResponse =
 -- | Merge a synchronisation response back into a client-side store.
 mergeSyncResponse ::
   forall ci si a.
-  (Ord ci, Ord si, Ord a) =>
+  (Ord ci, Ord si) =>
   ClientStore ci si a ->
   SyncResponse ci si a ->
   ClientStore ci si a
@@ -370,7 +370,7 @@ data ServerSyncProcessor ci si a m
 
 processServerSyncCustom ::
   forall ci si a m.
-  (Ord ci, Ord si, Ord a, Monad m) =>
+  (Ord si, Monad m) =>
   ServerSyncProcessor ci si a m ->
   SyncRequest ci si a ->
   m (SyncResponse ci si a)
@@ -391,7 +391,7 @@ newtype ServerStore si a
 
 instance (NFData si, NFData a) => NFData (ServerStore si a)
 
-instance (Validity si, Validity a, Show si, Show a, Ord si, Ord a) => Validity (ServerStore si a)
+instance (Validity si, Validity a, Show si, Show a, Ord si) => Validity (ServerStore si a)
 
 -- | An empty central store to start with
 emptyServerStore :: ServerStore si a
@@ -402,7 +402,7 @@ emptyServerStore = ServerStore {serverStoreItems = M.empty}
 -- see 'processSyncCustom'
 processServerSync ::
   forall m ci si a.
-  (Ord ci, Ord si, Ord a, Monad m) =>
+  (Ord si, Monad m) =>
   m si ->
   ServerStore si a ->
   SyncRequest ci si a ->

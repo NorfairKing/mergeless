@@ -36,15 +36,14 @@ import Lens.Micro
 clientMakeSyncRequestQuery ::
   ( Ord (Key serverRecord),
     PersistEntity clientRecord,
-    PersistField (Key clientRecord),
     PersistField (Key serverRecord),
     PersistEntityBackend clientRecord ~ SqlBackend,
     PersistEntityBackend serverRecord ~ SqlBackend
   ) =>
-  (clientRecord -> serverRecord) ->
+  (clientRecord -> a) ->
   EntityField clientRecord (Maybe (Key serverRecord)) ->
   EntityField clientRecord Bool ->
-  SqlPersistT IO (SyncRequest (Key clientRecord) (Key serverRecord) serverRecord)
+  SqlPersistT IO (SyncRequest (Key clientRecord) (Key serverRecord) a)
 clientMakeSyncRequestQuery func serverIdField deletedField = do
   syncRequestAdded <-
     M.fromList . map (\(Entity cid ct) -> (cid, func ct))
@@ -71,18 +70,16 @@ clientMakeSyncRequestQuery func serverIdField deletedField = do
 
 -- | Merge a sync response on the client side
 clientMergeSyncResponseQuery ::
-  ( Ord (Key serverRecord),
-    PersistEntity clientRecord,
-    PersistField (Key clientRecord),
+  ( PersistEntity clientRecord,
     PersistField (Key serverRecord),
     PersistEntityBackend clientRecord ~ SqlBackend,
     PersistEntityBackend serverRecord ~ SqlBackend
   ) =>
   -- | Create an un-deleted synced record on the client side
-  (Key serverRecord -> serverRecord -> clientRecord) ->
+  (Key serverRecord -> a -> clientRecord) ->
   EntityField clientRecord (Maybe (Key serverRecord)) ->
   EntityField clientRecord Bool ->
-  SyncResponse (Key clientRecord) (Key serverRecord) serverRecord ->
+  SyncResponse (Key clientRecord) (Key serverRecord) a ->
   SqlPersistT IO ()
 clientMergeSyncResponseQuery func serverIdField deletedField sr = do
   let clientSyncProcessorSyncServerAdded m = forM_ (M.toList m) $ \(si, st) ->
@@ -98,29 +95,27 @@ clientMergeSyncResponseQuery func serverIdField deletedField sr = do
 
 -- | Process a sync query on the server side.
 serverProcessSyncQuery ::
-  ( Ord ci,
-    Ord record,
-    PersistEntity record,
-    PersistField (Key record),
+  ( PersistEntity record,
     PersistEntityBackend record ~ SqlBackend
   ) =>
-  SyncRequest ci (Key record) record ->
-  SqlPersistT IO (SyncResponse ci (Key record) record)
-serverProcessSyncQuery = processServerSyncCustom serverSyncProcessor
+  (record -> a) ->
+  (a -> record) ->
+  SyncRequest ci (Key record) a ->
+  SqlPersistT IO (SyncResponse ci (Key record) a)
+serverProcessSyncQuery funcTo funcFrom = processServerSyncCustom $ serverSyncProcessor funcTo funcFrom
 
 serverSyncProcessor ::
-  ( Ord ci,
-    Ord record,
-    PersistEntity record,
-    PersistField (Key record),
+  ( PersistEntity record,
     PersistEntityBackend record ~ SqlBackend
   ) =>
-  ServerSyncProcessor ci (Key record) record (SqlPersistT IO)
-serverSyncProcessor =
+  (record -> a) ->
+  (a -> record) ->
+  ServerSyncProcessor ci (Key record) a (SqlPersistT IO)
+serverSyncProcessor funcTo funcFrom =
   ServerSyncProcessor {..}
   where
-    serverSyncProcessorRead = M.fromList . map (\(Entity i record) -> (i, record)) <$> selectList [] []
-    serverSyncProcessorAddItems = mapM insert
+    serverSyncProcessorRead = M.fromList . map (\(Entity i record) -> (i, funcTo record)) <$> selectList [] []
+    serverSyncProcessorAddItems = mapM $ insert . funcFrom
     serverSyncProcessorDeleteItems s = do
       mapM_ delete s
       pure s
@@ -130,8 +125,8 @@ serverSyncProcessor =
 -- You shouldn't need this.
 setupUnsyncedClientQuery ::
   (PersistEntity clientRecord, PersistEntityBackend clientRecord ~ SqlBackend) =>
-  (serverRecord -> clientRecord) ->
-  [serverRecord] ->
+  (a -> clientRecord) ->
+  [a] ->
   SqlPersistT IO ()
 setupUnsyncedClientQuery func = mapM_ (insert . func)
 
@@ -139,20 +134,17 @@ setupUnsyncedClientQuery func = mapM_ (insert . func)
 --
 -- You shouldn't need this.
 setupClientQuery ::
-  ( Ord (Key serverRecord),
-    PersistEntity clientRecord,
-    PersistField (Key clientRecord),
-    PersistField (Key serverRecord),
+  ( PersistEntity clientRecord,
     PersistEntityBackend clientRecord ~ SqlBackend,
     PersistEntityBackend serverRecord ~ SqlBackend
   ) =>
   -- | Create an un-deleted unsynced record on the client side
-  (serverRecord -> clientRecord) ->
+  (a -> clientRecord) ->
   -- | Create an un-deleted synced record on the client side
-  (Key serverRecord -> serverRecord -> clientRecord) ->
+  (Key serverRecord -> a -> clientRecord) ->
   -- | Create an deleted synced record on the client side
   (Key serverRecord -> clientRecord) ->
-  ClientStore (Key clientRecord) (Key serverRecord) serverRecord ->
+  ClientStore (Key clientRecord) (Key serverRecord) a ->
   SqlPersistT IO ()
 setupClientQuery funcU funcS funcD ClientStore {..} = do
   forM_ (M.toList clientStoreAdded) $ \(cid, st) ->
@@ -170,15 +162,13 @@ setupClientQuery funcU funcS funcD ClientStore {..} = do
 clientGetStoreQuery ::
   ( Ord (Key serverRecord),
     PersistEntity clientRecord,
-    PersistField (Key clientRecord),
     PersistField (Key serverRecord),
-    PersistEntityBackend clientRecord ~ SqlBackend,
-    PersistEntityBackend serverRecord ~ SqlBackend
+    PersistEntityBackend clientRecord ~ SqlBackend
   ) =>
-  (clientRecord -> serverRecord) ->
+  (clientRecord -> a) ->
   EntityField clientRecord (Maybe (Key serverRecord)) ->
   EntityField clientRecord Bool ->
-  SqlPersistT IO (ClientStore (Key clientRecord) (Key serverRecord) serverRecord)
+  SqlPersistT IO (ClientStore (Key clientRecord) (Key serverRecord) a)
 clientGetStoreQuery func serverIdField deletedField = do
   clientStoreAdded <-
     M.fromList . map (\(Entity cid ct) -> (cid, func ct))
@@ -208,11 +198,11 @@ clientGetStoreQuery func serverIdField deletedField = do
 -- You shouldn't need this.
 serverGetStoreQuery ::
   ( PersistEntity record,
-    PersistField (Key record),
     PersistEntityBackend record ~ SqlBackend
   ) =>
-  SqlPersistT IO (ServerStore (Key record) record)
-serverGetStoreQuery = ServerStore . M.fromList . map (\(Entity stid st) -> (stid, st)) <$> selectList [] []
+  (record -> a) ->
+  SqlPersistT IO (ServerStore (Key record) a)
+serverGetStoreQuery func = ServerStore . M.fromList . map (\(Entity stid st) -> (stid, func st)) <$> selectList [] []
 
 -- | Set up a server store in the database.
 --
@@ -220,9 +210,9 @@ serverGetStoreQuery = ServerStore . M.fromList . map (\(Entity stid st) -> (stid
 -- This uses 'insertKey' function and is therefore unsafe.
 setupServerQuery ::
   ( PersistEntity record,
-    PersistField (Key record),
     PersistEntityBackend record ~ SqlBackend
   ) =>
-  ServerStore (Key record) record ->
+  (a -> record) ->
+  ServerStore (Key record) a ->
   SqlPersistT IO ()
-setupServerQuery ServerStore {..} = forM_ (M.toList serverStoreItems) $ \(i, e) -> void $ insertKey i e
+setupServerQuery func ServerStore {..} = forM_ (M.toList serverStoreItems) $ \(i, e) -> void $ insertKey i $ func e

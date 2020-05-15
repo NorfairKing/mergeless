@@ -15,6 +15,9 @@ description:         Please see the README on GitHub at <https://github.com/Norf
 
 library:
   source-dirs: src
+  ghc-options:
+  - -Wall
+  - -fwarn-redundant-constraints
   dependencies:
     - aeson
     - base >= 4.11 && < 5
@@ -23,3 +26,4 @@ library:
     - mtl
     - validity
     - validity-containers
+
