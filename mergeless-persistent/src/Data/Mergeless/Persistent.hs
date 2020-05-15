@@ -34,16 +34,15 @@ import Lens.Micro
 
 -- | Make a sync request on the client side
 clientMakeSyncRequestQuery ::
-  ( Ord (Key serverRecord),
+  ( Ord sid,
     PersistEntity clientRecord,
-    PersistField (Key serverRecord),
-    PersistEntityBackend clientRecord ~ SqlBackend,
-    PersistEntityBackend serverRecord ~ SqlBackend
+    PersistField sid,
+    PersistEntityBackend clientRecord ~ SqlBackend
   ) =>
   (clientRecord -> a) ->
-  EntityField clientRecord (Maybe (Key serverRecord)) ->
+  EntityField clientRecord (Maybe sid) ->
   EntityField clientRecord Bool ->
-  SqlPersistT IO (SyncRequest (Key clientRecord) (Key serverRecord) a)
+  SqlPersistT IO (SyncRequest (Key clientRecord) sid a)
 clientMakeSyncRequestQuery func serverIdField deletedField = do
   syncRequestAdded <-
     M.fromList . map (\(Entity cid ct) -> (cid, func ct))
@@ -71,15 +70,14 @@ clientMakeSyncRequestQuery func serverIdField deletedField = do
 -- | Merge a sync response on the client side
 clientMergeSyncResponseQuery ::
   ( PersistEntity clientRecord,
-    PersistField (Key serverRecord),
-    PersistEntityBackend clientRecord ~ SqlBackend,
-    PersistEntityBackend serverRecord ~ SqlBackend
+    PersistField sid,
+    PersistEntityBackend clientRecord ~ SqlBackend
   ) =>
   -- | Create an un-deleted synced record on the client side
-  (Key serverRecord -> a -> clientRecord) ->
-  EntityField clientRecord (Maybe (Key serverRecord)) ->
+  (sid -> a -> clientRecord) ->
+  EntityField clientRecord (Maybe sid) ->
   EntityField clientRecord Bool ->
-  SyncResponse (Key clientRecord) (Key serverRecord) a ->
+  SyncResponse (Key clientRecord) sid a ->
   SqlPersistT IO ()
 clientMergeSyncResponseQuery func serverIdField deletedField sr = do
   let clientSyncProcessorSyncServerAdded m = forM_ (M.toList m) $ \(si, st) ->
@@ -135,16 +133,15 @@ setupUnsyncedClientQuery func = mapM_ (insert . func)
 -- You shouldn't need this.
 setupClientQuery ::
   ( PersistEntity clientRecord,
-    PersistEntityBackend clientRecord ~ SqlBackend,
-    PersistEntityBackend serverRecord ~ SqlBackend
+    PersistEntityBackend clientRecord ~ SqlBackend
   ) =>
   -- | Create an un-deleted unsynced record on the client side
   (a -> clientRecord) ->
   -- | Create an un-deleted synced record on the client side
-  (Key serverRecord -> a -> clientRecord) ->
+  (sid -> a -> clientRecord) ->
   -- | Create an deleted synced record on the client side
-  (Key serverRecord -> clientRecord) ->
-  ClientStore (Key clientRecord) (Key serverRecord) a ->
+  (sid -> clientRecord) ->
+  ClientStore (Key clientRecord) sid a ->
   SqlPersistT IO ()
 setupClientQuery funcU funcS funcD ClientStore {..} = do
   forM_ (M.toList clientStoreAdded) $ \(cid, st) ->
@@ -160,15 +157,15 @@ setupClientQuery funcU funcS funcD ClientStore {..} = do
 --
 -- You shouldn't need this.
 clientGetStoreQuery ::
-  ( Ord (Key serverRecord),
+  ( Ord sid,
     PersistEntity clientRecord,
-    PersistField (Key serverRecord),
+    PersistField sid,
     PersistEntityBackend clientRecord ~ SqlBackend
   ) =>
   (clientRecord -> a) ->
-  EntityField clientRecord (Maybe (Key serverRecord)) ->
+  EntityField clientRecord (Maybe sid) ->
   EntityField clientRecord Bool ->
-  SqlPersistT IO (ClientStore (Key clientRecord) (Key serverRecord) a)
+  SqlPersistT IO (ClientStore (Key clientRecord) sid a)
 clientGetStoreQuery func serverIdField deletedField = do
   clientStoreAdded <-
     M.fromList . map (\(Entity cid ct) -> (cid, func ct))
