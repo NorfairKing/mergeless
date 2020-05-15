@@ -2,15 +2,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 
--- Things learnt:
--- the server thing needs to be different from the client thing
--- the server thing needs to be able to be different from the thing on the wire because it needs to be able to deal with users
--- the client needs to keep a client id.
---  They are only necessary for one client request/response roundtrip so they can be generated,
---  HOWEVER they need to be matched up when the response comes and there is nothing else to identify the items by
--- the client needs to keep the server id
--- the client needs to tombstone the deleted items
-
 module Data.Mergeless.Persistent.SingleClientSpec
   ( spec,
   )
