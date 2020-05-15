@@ -36,7 +36,6 @@ tests:
       - mergeless
       - mergeless-persistent
       - monad-logger
-      - mtl
       - path
       - path-io
       - persistent

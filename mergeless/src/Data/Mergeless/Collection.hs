@@ -353,6 +353,7 @@ data ClientSyncProcessor ci si a m
 
 mergeSyncResponseCustom :: Monad m => ClientSyncProcessor ci si a m -> SyncResponse ci si a -> m ()
 mergeSyncResponseCustom ClientSyncProcessor {..} SyncResponse {..} = do
+  -- The order here matters!
   clientSyncProcessorSyncServerAdded syncResponseServerAdded
   clientSyncProcessorSyncServerDeleted syncResponseServerDeleted
   clientSyncProcessorSyncClientDeleted syncResponseClientDeleted
