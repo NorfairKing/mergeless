@@ -23,6 +23,17 @@ import TestUtils
 
 spec :: Spec
 spec = modifyMaxShrinks (const 0) $ twoClientsSpec $ do
+  describe "sanity" $ do
+    describe "setupClient & clientGetStore" $ do
+      it "roundtrips" $ \te -> forAllValid $ \cstore -> runTest te $ do
+        setupClient A cstore
+        cstore' <- clientGetStore A
+        liftIO $ cstore' `shouldBe` cstore
+    describe "setupServer & serverGetStore" $ do
+      it "roundtrips" $ \te -> forAllValid $ \sstore -> runTest te $ do
+        setupServer sstore
+        sstore' <- serverGetStore
+        liftIO $ sstore' `shouldBe` sstore
   describe "Single item" $ do
     it "successfully syncs an addition accross to a second client" $
       \te ->

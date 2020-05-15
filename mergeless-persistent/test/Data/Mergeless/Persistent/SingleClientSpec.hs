@@ -25,6 +25,17 @@ import TestUtils
 
 spec :: Spec
 spec = modifyMaxShrinks (const 0) $ oneClientSpec $ do
+  describe "sanity" $ do
+    describe "setupClient & clientGetStore" $ do
+      it "roundtrips" $ \te -> forAllValid $ \cstore -> runTest te $ do
+        setupClient cstore
+        cstore' <- clientGetStore
+        liftIO $ cstore' `shouldBe` cstore
+    describe "setupServer & serverGetStore" $ do
+      it "roundtrips" $ \te -> forAllValid $ \sstore -> runTest te $ do
+        setupServer sstore
+        sstore' <- serverGetStore
+        liftIO $ sstore' `shouldBe` sstore
   describe "Single item" $ do
     it "Succesfully downloads a single item from the server for an empty client" $ \te ->
       forAllValid $ \(sid, si) -> runTest te $ do
