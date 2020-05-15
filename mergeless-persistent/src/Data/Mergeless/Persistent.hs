@@ -8,18 +8,25 @@ module Data.Mergeless.Persistent
     clientMakeSyncRequestQuery,
     clientMergeSyncResponseQuery,
 
+    -- ** Raw processors
+    clientSyncProcessor,
+
     -- * Server side
     serverProcessSyncQuery,
     serverProcessSyncWithCustomIdQuery,
 
-    -- ** Sync Processor
+    -- ** Sync processors
     serverSyncProcessor,
     serverSyncProcessorWithCustomId,
 
     -- * Utils
+
+    -- ** Client side
     setupUnsyncedClientQuery,
     setupClientQuery,
     clientGetStoreQuery,
+
+    -- ** Server side side
     serverGetStoreQuery,
     setupServerQuery,
   )
@@ -89,17 +96,31 @@ clientMergeSyncResponseQuery ::
   EntityField clientRecord Bool ->
   SyncResponse (Key clientRecord) sid a ->
   SqlPersistT m ()
-clientMergeSyncResponseQuery func serverIdField deletedField sr = do
-  let clientSyncProcessorSyncServerAdded m = forM_ (M.toList m) $ \(si, st) ->
-        insert_ $ func si st
-      clientSyncProcessorSyncClientAdded m = forM_ (M.toList m) $ \(cid, sid) ->
-        update cid [serverIdField =. Just sid]
-      clientSyncProcessorSyncServerDeleted s = forM_ (S.toList s) $ \sid ->
-        deleteWhere [serverIdField ==. Just sid]
-      clientSyncProcessorSyncClientDeleted s = forM_ (S.toList s) $ \sid ->
-        deleteWhere [serverIdField ==. Just sid, deletedField ==. True]
-      proc = ClientSyncProcessor {..}
-  mergeSyncResponseCustom proc sr
+clientMergeSyncResponseQuery func serverIdField deletedField = mergeSyncResponseCustom $ clientSyncProcessor func serverIdField deletedField
+
+clientSyncProcessor ::
+  ( PersistEntity clientRecord,
+    PersistField sid,
+    PersistEntityBackend clientRecord ~ SqlBackend,
+    MonadIO m
+  ) =>
+  -- | Create an un-deleted synced record on the client side
+  (sid -> a -> clientRecord) ->
+  -- | The server id field
+  EntityField clientRecord (Maybe sid) ->
+  -- | The deleted field
+  EntityField clientRecord Bool ->
+  ClientSyncProcessor (Key clientRecord) sid a (SqlPersistT m)
+clientSyncProcessor func serverIdField deletedField = ClientSyncProcessor {..}
+  where
+    clientSyncProcessorSyncServerAdded m = forM_ (M.toList m) $ \(si, st) ->
+      insert_ $ func si st
+    clientSyncProcessorSyncClientAdded m = forM_ (M.toList m) $ \(cid, sid) ->
+      update cid [serverIdField =. Just sid]
+    clientSyncProcessorSyncServerDeleted s = forM_ (S.toList s) $ \sid ->
+      deleteWhere [serverIdField ==. Just sid]
+    clientSyncProcessorSyncClientDeleted s = forM_ (S.toList s) $ \sid ->
+      deleteWhere [serverIdField ==. Just sid, deletedField ==. True]
 
 -- | Process a sync query on the server side.
 serverProcessSyncQuery ::
