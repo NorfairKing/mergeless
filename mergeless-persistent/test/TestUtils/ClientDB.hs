@@ -10,7 +10,8 @@
 
 module TestUtils.ClientDB where
 
-import Data.Mergeless.Persistent ()
+import Data.Mergeless
+import Data.Mergeless.Persistent
 import Database.Persist.Sql
 import Database.Persist.TH
 import GHC.Generics (Generic)
@@ -33,6 +34,21 @@ ClientThing
   deriving Generic
 
 |]
+
+setupUnsyncedClientThingQuery :: [ServerThing] -> SqlPersistT IO ()
+setupUnsyncedClientThingQuery = setupUnsyncedClientQuery makeUnsyncedClientThing
+
+setupClientThingQuery :: ClientStore ClientThingId ServerThingId ServerThing -> SqlPersistT IO ()
+setupClientThingQuery = setupClientQuery makeUnsyncedClientThing makeSyncedClientThing makeDeletedClientThing
+
+clientGetStoreThingQuery :: SqlPersistT IO (ClientStore ClientThingId ServerThingId ServerThing)
+clientGetStoreThingQuery = clientGetStoreQuery makeServerThing ClientThingServerId ClientThingDeleted
+
+clientMakeSyncRequestThingQuery :: SqlPersistT IO (SyncRequest ClientThingId ServerThingId ServerThing)
+clientMakeSyncRequestThingQuery = clientMakeSyncRequestQuery makeServerThing ClientThingServerId ClientThingDeleted
+
+clientMergeSyncResponseThingQuery :: SyncResponse ClientThingId ServerThingId ServerThing -> SqlPersistT IO ()
+clientMergeSyncResponseThingQuery = clientMergeSyncResponseQuery makeSyncedClientThing ClientThingServerId ClientThingDeleted
 
 makeUnsyncedClientThing :: ServerThing -> ClientThing
 makeUnsyncedClientThing ServerThing {..} =

@@ -127,25 +127,25 @@ setupUnsyncedClient :: [ServerThing] -> T ()
 setupUnsyncedClient = runClientDB . setupUnsyncedClientQuery makeUnsyncedClientThing
 
 setupClient :: CS -> T ()
-setupClient = runClientDB . setupClientQuery makeUnsyncedClientThing makeSyncedClientThing makeDeletedClientThing
+setupClient = runClientDB . setupClientThingQuery
 
 setupServer :: SS -> T ()
-setupServer = runServerDB . setupServerQuery
+setupServer = runServerDB . setupServerThingQuery
 
 clientGetStore :: T CS
-clientGetStore = runClientDB $ clientGetStoreQuery makeServerThing ClientThingServerId ClientThingDeleted
+clientGetStore = runClientDB clientGetStoreThingQuery
 
 clientMakeSyncRequest :: T SReq
-clientMakeSyncRequest = runClientDB $ clientMakeSyncRequestQuery makeServerThing ClientThingServerId ClientThingDeleted
+clientMakeSyncRequest = runClientDB clientMakeSyncRequestThingQuery
 
 serverGetStore :: T SS
-serverGetStore = runServerDB serverGetStoreQuery
+serverGetStore = runServerDB serverGetStoreThingQuery
 
 serverProcessSync :: SReq -> T SResp
-serverProcessSync = runServerDB . serverProcessSyncQuery ServerThingId
+serverProcessSync = runServerDB . serverProcessSyncThingQuery
 
 clientMergeSyncResponse :: SResp -> T ()
-clientMergeSyncResponse = runClientDB . clientMergeSyncResponseQuery makeSyncedClientThing ClientThingServerId ClientThingDeleted
+clientMergeSyncResponse = runClientDB . clientMergeSyncResponseThingQuery
 
 data TestEnv
   = TestEnv

@@ -308,28 +308,28 @@ sync n = do
 
 setupUnsyncedClient :: Client -> [ServerThing] -> T ()
 setupUnsyncedClient n =
-  runClientDB n . setupUnsyncedClientQuery makeUnsyncedClientThing
+  runClientDB n . setupUnsyncedClientThingQuery
 
 setupClient :: Client -> CS -> T ()
-setupClient n = runClientDB n . setupClientQuery makeUnsyncedClientThing makeSyncedClientThing makeDeletedClientThing
+setupClient n = runClientDB n . setupClientThingQuery
 
 setupServer :: SS -> T ()
-setupServer = runServerDB . setupServerQuery
+setupServer = runServerDB . setupServerThingQuery
 
 clientGetStore :: Client -> T CS
-clientGetStore n = runClientDB n $ clientGetStoreQuery makeServerThing ClientThingServerId ClientThingDeleted
+clientGetStore n = runClientDB n clientGetStoreThingQuery
 
 clientMakeSyncRequest :: Client -> T SReq
-clientMakeSyncRequest n = runClientDB n $ clientMakeSyncRequestQuery makeServerThing ClientThingServerId ClientThingDeleted
+clientMakeSyncRequest n = runClientDB n clientMakeSyncRequestThingQuery
 
 serverGetStore :: T SS
-serverGetStore = runServerDB serverGetStoreQuery
+serverGetStore = runServerDB serverGetStoreThingQuery
 
 serverProcessSync :: SReq -> T SResp
-serverProcessSync = runServerDB . serverProcessSyncQuery ServerThingId
+serverProcessSync = runServerDB . serverProcessSyncThingQuery
 
 clientMergeSyncResponse :: Client -> SResp -> T ()
-clientMergeSyncResponse n = runClientDB n . clientMergeSyncResponseQuery makeSyncedClientThing ClientThingServerId ClientThingDeleted
+clientMergeSyncResponse n = runClientDB n . clientMergeSyncResponseThingQuery
 
 data Client = A | B
   deriving (Show, Eq)

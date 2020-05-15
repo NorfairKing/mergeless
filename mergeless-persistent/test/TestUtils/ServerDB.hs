@@ -10,6 +10,8 @@
 module TestUtils.ServerDB where
 
 import Data.GenValidity
+import Data.Mergeless
+import Data.Mergeless.Persistent
 import Database.Persist.Sql
 import Database.Persist.TH
 import GHC.Generics (Generic)
@@ -33,3 +35,12 @@ instance Validity ServerThing
 instance GenUnchecked ServerThing
 
 instance GenValid ServerThing
+
+setupServerThingQuery :: ServerStore ServerThingId ServerThing -> SqlPersistT IO ()
+setupServerThingQuery = setupServerQuery
+
+serverGetStoreThingQuery :: SqlPersistT IO (ServerStore ServerThingId ServerThing)
+serverGetStoreThingQuery = serverGetStoreQuery
+
+serverProcessSyncThingQuery :: Ord cid => SyncRequest cid ServerThingId ServerThing -> SqlPersistT IO (SyncResponse cid ServerThingId ServerThing)
+serverProcessSyncThingQuery = serverProcessSyncQuery ServerThingId
