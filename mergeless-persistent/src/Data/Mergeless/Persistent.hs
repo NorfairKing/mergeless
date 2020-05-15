@@ -43,8 +43,11 @@ clientMakeSyncRequestQuery ::
     PersistEntityBackend clientRecord ~ SqlBackend,
     MonadIO m
   ) =>
+  -- | How to read a record
   (clientRecord -> a) ->
+  -- | The server id field
   EntityField clientRecord (Maybe sid) ->
+  -- | The deleted field
   EntityField clientRecord Bool ->
   SqlPersistT m (SyncRequest (Key clientRecord) sid a)
 clientMakeSyncRequestQuery func serverIdField deletedField = do
@@ -80,7 +83,9 @@ clientMergeSyncResponseQuery ::
   ) =>
   -- | Create an un-deleted synced record on the client side
   (sid -> a -> clientRecord) ->
+  -- | The server id field
   EntityField clientRecord (Maybe sid) ->
+  -- | The deleted field
   EntityField clientRecord Bool ->
   SyncResponse (Key clientRecord) sid a ->
   SqlPersistT m ()
@@ -102,8 +107,13 @@ serverProcessSyncQuery ::
     PersistEntityBackend record ~ SqlBackend,
     MonadIO m
   ) =>
+  -- | Filters to select the relevant items
+  --
+  -- Use these if you have multiple users and you want to sync per-user
   [Filter record] ->
+  -- | How to read a record
   (record -> a) ->
+  -- | How to insert a _new_ record
   (a -> record) ->
   SyncRequest ci (Key record) a ->
   SqlPersistT m (SyncResponse ci (Key record) a)
@@ -115,8 +125,13 @@ serverSyncProcessor ::
     PersistEntityBackend record ~ SqlBackend,
     MonadIO m
   ) =>
+  -- | Filters to select the relevant items
+  --
+  -- Use these if you have multiple users and you want to sync per-user
   [Filter record] ->
+  -- | How to read a record
   (record -> a) ->
+  -- | How to insert a _new_ record
   (a -> record) ->
   ServerSyncProcessor ci (Key record) a (SqlPersistT m)
 serverSyncProcessor filters funcTo funcFrom =
@@ -136,10 +151,17 @@ serverProcessSyncWithCustomIdQuery ::
     PersistEntityBackend record ~ SqlBackend,
     MonadIO m
   ) =>
+  -- | The action to generate new identifiers
   SqlPersistT m sid ->
+  -- | The id field
   EntityField record sid ->
+  -- | Filters to select the relevant items
+  --
+  -- Use these if you have multiple users and you want to sync per-user
   [Filter record] ->
+  -- | How to read a record
   (Entity record -> (sid, a)) ->
+  -- | How to insert a _new_ record
   (sid -> a -> record) ->
   SyncRequest ci sid a ->
   SqlPersistT m (SyncResponse ci sid a)
@@ -153,10 +175,17 @@ serverSyncProcessorWithCustomId ::
     PersistEntityBackend record ~ SqlBackend,
     MonadIO m
   ) =>
+  -- | The action to generate new identifiers
   SqlPersistT m sid ->
+  -- | The id field
   EntityField record sid ->
+  -- | Filters to select the relevant items
+  --
+  -- Use these if you have multiple users and you want to sync per-user
   [Filter record] ->
+  -- | How to read a record
   (Entity record -> (sid, a)) ->
+  -- | How to insert a _new_ record
   (sid -> a -> record) ->
   ServerSyncProcessor ci sid a (SqlPersistT m)
 serverSyncProcessorWithCustomId genId idField filters funcTo funcFrom =
@@ -180,6 +209,7 @@ setupUnsyncedClientQuery ::
     PersistEntityBackend clientRecord ~ SqlBackend,
     MonadIO m
   ) =>
+  -- | How to insert a _new_ record
   (a -> clientRecord) ->
   [a] ->
   SqlPersistT m ()
@@ -221,8 +251,11 @@ clientGetStoreQuery ::
     PersistEntityBackend clientRecord ~ SqlBackend,
     MonadIO m
   ) =>
+  -- | How to red a record
   (clientRecord -> a) ->
+  -- | The server id field
   EntityField clientRecord (Maybe sid) ->
+  -- | The deleted field
   EntityField clientRecord Bool ->
   SqlPersistT m (ClientStore (Key clientRecord) sid a)
 clientGetStoreQuery func serverIdField deletedField = do
@@ -257,6 +290,7 @@ serverGetStoreQuery ::
     PersistEntityBackend record ~ SqlBackend,
     MonadIO m
   ) =>
+  -- | How to read a record
   (record -> a) ->
   SqlPersistT m (ServerStore (Key record) a)
 serverGetStoreQuery func = ServerStore . M.fromList . map (\(Entity stid st) -> (stid, func st)) <$> selectList [] []
@@ -270,6 +304,7 @@ setupServerQuery ::
     PersistEntityBackend record ~ SqlBackend,
     MonadIO m
   ) =>
+  -- | How to write a record
   (a -> record) ->
   ServerStore (Key record) a ->
   SqlPersistT m ()
