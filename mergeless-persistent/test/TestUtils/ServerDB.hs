@@ -20,7 +20,7 @@ newtype Thing
   = Thing
       { thingNumber :: Int
       }
-  deriving (Show, Eq, Generic)
+  deriving (Show, Eq, Ord, Generic)
 
 instance Validity Thing
 

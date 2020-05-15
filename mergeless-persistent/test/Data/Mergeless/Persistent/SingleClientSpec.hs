@@ -95,13 +95,13 @@ runServerDB func = do
   pool <- asks testEnvServerPool
   liftIO $ runSqlPool func pool
 
-type CS = ClientStore ClientThingId ServerThingId ServerThing
+type CS = ClientStore ClientThingId ServerThingId Thing
 
-type SReq = SyncRequest ClientThingId ServerThingId ServerThing
+type SReq = SyncRequest ClientThingId ServerThingId Thing
 
-type SS = ServerStore ServerThingId ServerThing
+type SS = ServerStore ServerThingId Thing
 
-type SResp = SyncResponse ClientThingId ServerThingId ServerThing
+type SResp = SyncResponse ClientThingId ServerThingId Thing
 
 sync :: T (CS, SS, SS, CS)
 sync = do
@@ -114,7 +114,7 @@ sync = do
   cstore2 <- clientGetStore
   pure (cstore1, sstore1, sstore2, cstore2)
 
-setupUnsyncedClient :: [ServerThing] -> T ()
+setupUnsyncedClient :: [Thing] -> T ()
 setupUnsyncedClient = runClientDB . setupUnsyncedClientQuery makeUnsyncedClientThing
 
 setupClient :: CS -> T ()

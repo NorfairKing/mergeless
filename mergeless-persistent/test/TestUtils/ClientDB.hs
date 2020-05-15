@@ -35,33 +35,33 @@ ClientThing
 
 |]
 
-setupUnsyncedClientThingQuery :: [ServerThing] -> SqlPersistT IO ()
+setupUnsyncedClientThingQuery :: [Thing] -> SqlPersistT IO ()
 setupUnsyncedClientThingQuery = setupUnsyncedClientQuery makeUnsyncedClientThing
 
-setupClientThingQuery :: ClientStore ClientThingId ServerThingId ServerThing -> SqlPersistT IO ()
+setupClientThingQuery :: ClientStore ClientThingId ServerThingId Thing -> SqlPersistT IO ()
 setupClientThingQuery = setupClientQuery makeUnsyncedClientThing makeSyncedClientThing makeDeletedClientThing
 
-clientGetStoreThingQuery :: SqlPersistT IO (ClientStore ClientThingId ServerThingId ServerThing)
-clientGetStoreThingQuery = clientGetStoreQuery makeServerThing ClientThingServerId ClientThingDeleted
+clientGetStoreThingQuery :: SqlPersistT IO (ClientStore ClientThingId ServerThingId Thing)
+clientGetStoreThingQuery = clientGetStoreQuery clientMakeThing ClientThingServerId ClientThingDeleted
 
-clientMakeSyncRequestThingQuery :: SqlPersistT IO (SyncRequest ClientThingId ServerThingId ServerThing)
-clientMakeSyncRequestThingQuery = clientMakeSyncRequestQuery makeServerThing ClientThingServerId ClientThingDeleted
+clientMakeSyncRequestThingQuery :: SqlPersistT IO (SyncRequest ClientThingId ServerThingId Thing)
+clientMakeSyncRequestThingQuery = clientMakeSyncRequestQuery clientMakeThing ClientThingServerId ClientThingDeleted
 
-clientMergeSyncResponseThingQuery :: SyncResponse ClientThingId ServerThingId ServerThing -> SqlPersistT IO ()
+clientMergeSyncResponseThingQuery :: SyncResponse ClientThingId ServerThingId Thing -> SqlPersistT IO ()
 clientMergeSyncResponseThingQuery = clientMergeSyncResponseQuery makeSyncedClientThing ClientThingServerId ClientThingDeleted
 
-makeUnsyncedClientThing :: ServerThing -> ClientThing
-makeUnsyncedClientThing ServerThing {..} =
+makeUnsyncedClientThing :: Thing -> ClientThing
+makeUnsyncedClientThing Thing {..} =
   ClientThing
-    { clientThingNumber = serverThingNumber,
+    { clientThingNumber = thingNumber,
       clientThingDeleted = False,
       clientThingServerId = Nothing
     }
 
-makeSyncedClientThing :: ServerThingId -> ServerThing -> ClientThing
-makeSyncedClientThing sid ServerThing {..} =
+makeSyncedClientThing :: ServerThingId -> Thing -> ClientThing
+makeSyncedClientThing sid Thing {..} =
   ClientThing
-    { clientThingNumber = serverThingNumber,
+    { clientThingNumber = thingNumber,
       clientThingDeleted = False,
       clientThingServerId = Just sid
     }
@@ -73,3 +73,6 @@ makeDeletedClientThing sid =
       clientThingDeleted = True,
       clientThingServerId = Just sid
     }
+
+clientMakeThing :: ClientThing -> Thing
+clientMakeThing ClientThing {..} = Thing {thingNumber = clientThingNumber}

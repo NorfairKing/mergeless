@@ -10,7 +10,6 @@ where
 import Control.Monad
 import Control.Monad.Reader
 import Data.GenValidity.Mergeless ()
-import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Mergeless
 import qualified Data.Set as S
@@ -36,7 +35,7 @@ spec = modifyMaxShrinks (const 0) $ twoClientsSpec $ do
           sstore2 <- serverGetStore
           case M.toList (syncResponseClientAdded resp1) of
             [(_, clientAdditionId)] -> do
-              let items = M.singleton clientAdditionId st :: Map ServerThingId ServerThing
+              let items = M.singleton clientAdditionId st
               liftIO $ sstore2 `shouldBe` (ServerStore {serverStoreItems = items})
               clientMergeSyncResponse A resp1
               cAstore2 <- clientGetStore A
@@ -286,13 +285,13 @@ runServerDB func = do
   pool <- asks testEnvServerPool
   liftIO $ runSqlPool func pool
 
-type CS = ClientStore ClientThingId ServerThingId ServerThing
+type CS = ClientStore ClientThingId ServerThingId Thing
 
-type SReq = SyncRequest ClientThingId ServerThingId ServerThing
+type SReq = SyncRequest ClientThingId ServerThingId Thing
 
-type SS = ServerStore ServerThingId ServerThing
+type SS = ServerStore ServerThingId Thing
 
-type SResp = SyncResponse ClientThingId ServerThingId ServerThing
+type SResp = SyncResponse ClientThingId ServerThingId Thing
 
 sync :: Client -> T (CS, SS, SS, CS)
 sync n = do
@@ -305,7 +304,7 @@ sync n = do
   cstore2 <- clientGetStore n
   pure (cstore1, sstore1, sstore2, cstore2)
 
-setupUnsyncedClient :: Client -> [ServerThing] -> T ()
+setupUnsyncedClient :: Client -> [Thing] -> T ()
 setupUnsyncedClient n =
   runClientDB n . setupUnsyncedClientThingQuery
 
