@@ -55,7 +55,7 @@ serverGetStoreThingQuery :: SqlPersistT IO (ServerStore ServerThingId Thing)
 serverGetStoreThingQuery = serverGetStoreQuery serverMakeThing
 
 serverProcessSyncThingQuery :: Ord cid => SyncRequest cid ServerThingId Thing -> SqlPersistT IO (SyncResponse cid ServerThingId Thing)
-serverProcessSyncThingQuery = serverProcessSyncQuery serverMakeThing makeServerThing
+serverProcessSyncThingQuery = serverProcessSyncQuery [] serverMakeThing makeServerThing
 
 serverMakeThing :: ServerThing -> Thing
 serverMakeThing ServerThing {..} = Thing {thingNumber = serverThingNumber}

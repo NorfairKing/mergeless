@@ -102,11 +102,12 @@ serverProcessSyncQuery ::
     PersistEntityBackend record ~ SqlBackend,
     MonadIO m
   ) =>
+  [Filter record] ->
   (record -> a) ->
   (a -> record) ->
   SyncRequest ci (Key record) a ->
   SqlPersistT m (SyncResponse ci (Key record) a)
-serverProcessSyncQuery funcTo funcFrom = processServerSyncCustom $ serverSyncProcessor funcTo funcFrom
+serverProcessSyncQuery filters funcTo funcFrom = processServerSyncCustom $ serverSyncProcessor filters funcTo funcFrom
 
 -- | A server sync processor that uses the sqlkey of the record as the name
 serverSyncProcessor ::
@@ -114,13 +115,14 @@ serverSyncProcessor ::
     PersistEntityBackend record ~ SqlBackend,
     MonadIO m
   ) =>
+  [Filter record] ->
   (record -> a) ->
   (a -> record) ->
   ServerSyncProcessor ci (Key record) a (SqlPersistT m)
-serverSyncProcessor funcTo funcFrom =
+serverSyncProcessor filters funcTo funcFrom =
   ServerSyncProcessor {..}
   where
-    serverSyncProcessorRead = M.fromList . map (\(Entity i record) -> (i, funcTo record)) <$> selectList [] []
+    serverSyncProcessorRead = M.fromList . map (\(Entity i record) -> (i, funcTo record)) <$> selectList filters []
     serverSyncProcessorAddItems = mapM $ insert . funcFrom
     serverSyncProcessorDeleteItems s = do
       mapM_ delete s
@@ -136,11 +138,12 @@ serverProcessSyncWithCustomIdQuery ::
   ) =>
   SqlPersistT m sid ->
   EntityField record sid ->
+  [Filter record] ->
   (Entity record -> (sid, a)) ->
   (sid -> a -> record) ->
   SyncRequest ci sid a ->
   SqlPersistT m (SyncResponse ci sid a)
-serverProcessSyncWithCustomIdQuery genId idField funcTo funcFrom = processServerSyncCustom $ serverSyncProcessorWithCustomId genId idField funcTo funcFrom
+serverProcessSyncWithCustomIdQuery genId idField filters funcTo funcFrom = processServerSyncCustom $ serverSyncProcessorWithCustomId genId idField filters funcTo funcFrom
 
 -- | A server sync processor that uses a custom key as the name
 serverSyncProcessorWithCustomId ::
@@ -152,13 +155,14 @@ serverSyncProcessorWithCustomId ::
   ) =>
   SqlPersistT m sid ->
   EntityField record sid ->
+  [Filter record] ->
   (Entity record -> (sid, a)) ->
   (sid -> a -> record) ->
   ServerSyncProcessor ci sid a (SqlPersistT m)
-serverSyncProcessorWithCustomId genId idField funcTo funcFrom =
+serverSyncProcessorWithCustomId genId idField filters funcTo funcFrom =
   ServerSyncProcessor {..}
   where
-    serverSyncProcessorRead = M.fromList . map funcTo <$> selectList [] []
+    serverSyncProcessorRead = M.fromList . map funcTo <$> selectList filters []
     serverSyncProcessorAddItems = mapM $ \a -> do
       sid <- genId
       let record = funcFrom sid a
