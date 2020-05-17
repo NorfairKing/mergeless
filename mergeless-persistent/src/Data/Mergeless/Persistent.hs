@@ -181,7 +181,7 @@ serverProcessSyncWithCustomIdQuery ::
   -- Use these if you have multiple users and you want to sync per-user
   [Filter record] ->
   -- | How to read a record
-  (Entity record -> (sid, a)) ->
+  (record -> (sid, a)) ->
   -- | How to insert a _new_ record
   (sid -> a -> record) ->
   SyncRequest ci sid a ->
@@ -205,14 +205,14 @@ serverSyncProcessorWithCustomId ::
   -- Use these if you have multiple users and you want to sync per-user
   [Filter record] ->
   -- | How to read a record
-  (Entity record -> (sid, a)) ->
+  (record -> (sid, a)) ->
   -- | How to insert a _new_ record
   (sid -> a -> record) ->
   ServerSyncProcessor ci sid a (SqlPersistT m)
 serverSyncProcessorWithCustomId genId idField filters funcTo funcFrom =
   ServerSyncProcessor {..}
   where
-    serverSyncProcessorRead = M.fromList . map funcTo <$> selectList filters []
+    serverSyncProcessorRead = M.fromList . map (funcTo . entityVal) <$> selectList filters []
     serverSyncProcessorAddItems = mapM $ \a -> do
       sid <- genId
       let record = funcFrom sid a
