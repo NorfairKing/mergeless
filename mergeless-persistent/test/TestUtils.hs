@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -27,14 +28,12 @@ import TestUtils.ServerDB
 
 withServerPool :: (ConnectionPool -> IO a) -> IO a
 withServerPool func =
-  withSystemTempFile "mergeless-persistent-test-server-db" $ \serverFile _ ->
-    runNoLoggingT $ withSqlitePool (T.pack $ fromAbsFile serverFile) 1 $ \serverPool -> do
-      flip runSqlPool serverPool $ void $ runMigrationSilent migrateServer
-      liftIO $ func serverPool
+  runNoLoggingT $ withSqlitePool ":memory:" 1 $ \serverPool -> do
+    flip runSqlPool serverPool $ void $ runMigrationSilent migrateServer
+    liftIO $ func serverPool
 
 withClientPool :: Int -> (ConnectionPool -> IO a) -> IO a
 withClientPool i func =
-  withSystemTempFile ("mergeless-persistent-test-client-" <> show i <> "-db") $ \clientFile _ ->
-    runNoLoggingT $ withSqlitePool (T.pack $ fromAbsFile clientFile) 1 $ \clientPool -> do
-      flip runSqlPool clientPool $ void $ runMigrationSilent migrateClient
-      liftIO $ func clientPool
+  runNoLoggingT $ withSqlitePool ":memory:" 1 $ \clientPool -> do
+    flip runSqlPool clientPool $ void $ runMigrationSilent migrateClient
+    liftIO $ func clientPool
