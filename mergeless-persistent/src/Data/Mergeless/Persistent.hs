@@ -66,14 +66,14 @@ clientMakeSyncRequestQuery func serverIdField deletedField = do
         ]
         []
   syncRequestSynced <-
-    S.fromList . map (\e -> fromJust (e ^. fieldLens serverIdField))
+    S.fromList . mapMaybe (\e -> e ^. fieldLens serverIdField)
       <$> selectList
         [ serverIdField !=. Nothing,
           deletedField ==. False
         ]
         []
   syncRequestDeleted <-
-    S.fromList . map (\e -> fromJust (e ^. fieldLens serverIdField))
+    S.fromList . mapMaybe (\e -> e ^. fieldLens serverIdField)
       <$> selectList
         [ serverIdField !=. Nothing,
           deletedField ==. True
@@ -288,14 +288,14 @@ clientGetStoreQuery func serverIdField deletedField = do
         ]
         []
   clientStoreSynced <-
-    M.fromList . map (\e@(Entity _ ct) -> (fromJust (e ^. fieldLens serverIdField), func ct))
+    M.fromList . mapMaybe (\e@(Entity _ ct) -> (,) <$> (e ^. fieldLens serverIdField) <*> pure (func ct))
       <$> selectList
         [ serverIdField !=. Nothing,
           deletedField ==. False
         ]
         []
   clientStoreDeleted <-
-    S.fromList . map (\e -> fromJust (e ^. fieldLens serverIdField))
+    S.fromList . mapMaybe (\e -> e ^. fieldLens serverIdField)
       <$> selectList
         [ serverIdField !=. Nothing,
           deletedField ==. True
