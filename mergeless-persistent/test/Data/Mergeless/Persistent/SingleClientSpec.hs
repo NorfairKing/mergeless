@@ -160,6 +160,6 @@ oneClientSpec = around withTestEnv
 
 withTestEnv :: (TestEnv -> IO a) -> IO a
 withTestEnv func =
-  withServerPool $ \serverPool -> withClientPool 1 $ \clientPool -> do
+  withServerPool $ \serverPool -> withClientPool $ \clientPool -> do
     let tenv = TestEnv {testEnvClientPool = clientPool, testEnvServerPool = serverPool}
     liftIO $ func tenv

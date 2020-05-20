@@ -356,8 +356,8 @@ twoClientsSpec = around withTestEnv
 withTestEnv :: (TestEnv -> IO a) -> IO a
 withTestEnv func =
   withServerPool $ \serverPool ->
-    withClientPool 1 $ \client1Pool ->
-      withClientPool 2 $ \client2Pool -> do
+    withClientPool $ \client1Pool ->
+      withClientPool $ \client2Pool -> do
         let tenv =
               TestEnv
                 { testEnvServerPool = serverPool,
