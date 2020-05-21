@@ -1,10 +1,10 @@
 name:                genvalidity-mergeless
-version:             0.1.0.0
+version:             0.2.0.0
 github:              "NorfairKing/mergeless"
 license:             MIT
 author:              "Tom Sydney Kerckhove"
 maintainer:          "syd.kerckhove@gmail.com"
-copyright:           "Copyright: (c) 2018 Tom Sydney Kerckhove"
+copyright:           "Copyright: (c) 2018-2020 Tom Sydney Kerckhove"
 
 extra-source-files:
 - README.md
