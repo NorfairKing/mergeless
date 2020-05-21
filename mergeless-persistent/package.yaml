@@ -5,6 +5,7 @@ license:             MIT
 author:              "Tom Sydney Kerckhove"
 maintainer:          "syd.kerckhove@gmail.com"
 copyright:           "Copyright: (c) 2018-2020 Tom Sydney Kerckhove"
+synopsis:            Support for using mergeless from persistent-based databases
 
 dependencies:
   - base >= 4.11 && < 5
