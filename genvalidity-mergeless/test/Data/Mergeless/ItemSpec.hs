@@ -7,7 +7,6 @@ where
 
 import Data.GenValidity.Mergeless.Item ()
 import Data.GenValidity.UUID ()
-import Data.Int (Int)
 import Data.Mergeless.Item
 import Test.Hspec
 import Test.Validity

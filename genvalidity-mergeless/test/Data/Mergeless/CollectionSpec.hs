@@ -12,7 +12,6 @@ where
 import Control.Monad.State
 import Data.GenValidity.Mergeless.Collection ()
 import Data.GenValidity.UUID ()
-import Data.Int (Int)
 import Data.List
 import qualified Data.Map.Strict as M
 import Data.Mergeless.Collection

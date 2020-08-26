@@ -1,4 +1,4 @@
-resolver: lts-14.23
+resolver: lts-15.15
 packages:
   - mergeless
   - genvalidity-mergeless
@@ -41,7 +41,7 @@ extra-deps:
   - validity-uuid
   - validity-vector
 nix:
-  path: [ "nixpkgs=https://github.com/NixOS/nixpkgs/archive/a87b506140a7267477103759c3f8da5b2e8d994e.tar.gz" ]
+  path: [ "nixpkgs=https://github.com/NixOS/nixpkgs/archive/e3a2247046d4de66b9b193a6ab3ff040fa3da86d.tar.gz" ]
   add-gc-roots: true
   packages:
   - zlib
