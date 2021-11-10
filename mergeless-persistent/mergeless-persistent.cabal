@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 01b770a80d2be35f4a16d54d3e4100ecb434a544256ffd9ee5b3c27d6fee8657
+-- hash: a02e02c43ecf58e7efe44e41e469d7362977483f944d34a0c374df79b0a74395
 
 name:           mergeless-persistent
 version:        0.0.0.0
@@ -54,7 +54,7 @@ test-suite mergeless-persistent-test
       QuickCheck
     , base >=4.11 && <5
     , containers
-    , genvalidity
+    , genvalidity >=1.0
     , genvalidity-hspec
     , genvalidity-mergeless
     , genvalidity-persistent

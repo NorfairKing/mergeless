@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 0fb32a64505d66389249b91ab33990a95c7b3f63032e84f0dc094e1439aec358
+-- hash: 0d8082b53d72440401c6989cbcca8785ae6c4172580671bbd3f58544521431b6
 
 name:           genvalidity-mergeless
 version:        0.2.0.0
@@ -37,7 +37,7 @@ library
       QuickCheck
     , base >=4.7 && <5
     , containers
-    , genvalidity
+    , genvalidity >=1.0
     , genvalidity-containers
     , genvalidity-time
     , mergeless >=0.2.0.0

@@ -32,7 +32,7 @@ tests:
     dependencies:
       - QuickCheck
       - containers
-      - genvalidity
+      - genvalidity >= 1.0
       - genvalidity-hspec
       - genvalidity-mergeless
       - genvalidity-persistent

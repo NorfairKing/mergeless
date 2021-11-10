@@ -19,7 +19,7 @@ library:
     - base >= 4.7 && < 5
     - QuickCheck
     - containers
-    - genvalidity
+    - genvalidity >= 1.0
     - genvalidity-containers
     - genvalidity-time
     - mergeless >= 0.2.0.0

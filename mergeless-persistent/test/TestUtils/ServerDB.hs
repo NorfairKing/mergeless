@@ -19,15 +19,12 @@ import Database.Persist.Sql
 import Database.Persist.TH
 import GHC.Generics (Generic)
 
-newtype Thing
-  = Thing
-      { thingNumber :: Int
-      }
+newtype Thing = Thing
+  { thingNumber :: Int
+  }
   deriving (Show, Eq, Ord, Generic)
 
 instance Validity Thing
-
-instance GenUnchecked Thing
 
 instance GenValid Thing
 
@@ -46,8 +43,6 @@ ServerThing
 |]
 
 instance Validity ServerThing
-
-instance GenUnchecked ServerThing
 
 instance GenValid ServerThing
 
