@@ -1,19 +1,13 @@
+{ sources ? import ./sources.nix
+}:
 let
-  pkgsv = import (import ./nixpkgs.nix);
-  pkgs = pkgsv {};
-  validity-overlay =
-    import (
-      (
-        pkgs.fetchFromGitHub (import ./validity-version.nix)
-        + "/nix/overlay.nix"
-      )
-    );
+  pkgsv = import sources.nixpkgs;
 in
-pkgsv {
-  overlays =
-    [
-      validity-overlay
-      (import ./overlay.nix)
-      (import ./gitignore-src.nix)
-    ];
+import sources.nixpkgs {
+  overlays = [
+    (import (sources.validity + "/nix/overlay.nix"))
+    (final: previous: { inherit (import sources.gitignore { inherit (final) lib; }) gitignoreSource; })
+    (import ./overlay.nix)
+  ];
+  config.allowUnfree = true;
 }

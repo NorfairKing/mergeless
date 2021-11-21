@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 5f5e451a78c312ccbef6cc567464e0983bc9a8fbba6a7f428016c9f186aeebcb
+-- hash: 5dff1d10e51ea7be22749d5beb4feaa3e8ed629bd69b8d4e6bde95100b96a5c7
 
 name:           mergeless
 version:        0.3.0.0
@@ -17,7 +17,6 @@ copyright:      Copyright: (c) 2018-2020 Tom Sydney Kerckhove
 license:        MIT
 build-type:     Simple
 extra-source-files:
-    README.md
     ChangeLog.md
 
 source-repository head

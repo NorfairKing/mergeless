@@ -1,13 +1,12 @@
 name:                genvalidity-mergeless
-version:             0.2.0.0
+version:             0.3.0.0
 github:              "NorfairKing/mergeless"
 license:             MIT
 author:              "Tom Sydney Kerckhove"
 maintainer:          "syd.kerckhove@gmail.com"
-copyright:           "Copyright: (c) 2018-2020 Tom Sydney Kerckhove"
+copyright:           "Copyright: (c) 2018-2021 Tom Sydney Kerckhove"
 
 extra-source-files:
-- README.md
 - ChangeLog.md
 
 description:         Please see the README on GitHub at <https://github.com/NorfairKing/mergeless#readme>
@@ -19,10 +18,10 @@ library:
     - base >= 4.7 && < 5
     - QuickCheck
     - containers
-    - genvalidity >= 1.0
+    - genvalidity >=1.0
     - genvalidity-containers
     - genvalidity-time
-    - mergeless >= 0.2.0.0
+    - mergeless >=0.2.0.0
 
 tests:
   mergeless-test:

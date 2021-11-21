@@ -1,11 +1,14 @@
 name:                mergeless-persistent
-version:             0.0.0.0
+version:             0.1.0.0
 github:              "NorfairKing/mergeless"
 license:             MIT
 author:              "Tom Sydney Kerckhove"
 maintainer:          "syd.kerckhove@gmail.com"
 copyright:           "Copyright: (c) 2018-2020 Tom Sydney Kerckhove"
 synopsis:            Support for using mergeless from persistent-based databases
+
+extra-source-files:
+- ChangeLog.md
 
 dependencies:
   - base >= 4.11 && < 5
