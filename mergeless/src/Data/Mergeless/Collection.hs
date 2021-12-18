@@ -86,8 +86,8 @@ import Data.Aeson
 import Data.List
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
-import qualified Data.Set as S
 import Data.Set (Set)
+import qualified Data.Set as S
 import Data.Validity
 import Data.Validity.Containers ()
 import Data.Word
@@ -98,10 +98,9 @@ import GHC.Generics (Generic)
 -- | A Client-side identifier for items for use with pure client stores
 --
 -- These only need to be unique at the client.
-newtype ClientId
-  = ClientId
-      { unClientId :: Word64
-      }
+newtype ClientId = ClientId
+  { unClientId :: Word64
+  }
   deriving (Show, Eq, Ord, Enum, Bounded, Generic, ToJSON, ToJSONKey, FromJSON, FromJSONKey)
 
 instance Validity ClientId
@@ -109,12 +108,11 @@ instance Validity ClientId
 instance NFData ClientId
 
 -- | A client-side store of items with Client Id's of type @ci@, Server Id's of type @i@ and values of type @a@
-data ClientStore ci si a
-  = ClientStore
-      { clientStoreAdded :: !(Map ci a),
-        clientStoreSynced :: !(Map si a),
-        clientStoreDeleted :: !(Set si)
-      }
+data ClientStore ci si a = ClientStore
+  { clientStoreAdded :: !(Map ci a),
+    clientStoreSynced :: !(Map si a),
+    clientStoreDeleted :: !(Set si)
+  }
   deriving (Show, Eq, Ord, Generic)
 
 instance (NFData ci, NFData si, NFData a) => NFData (ClientStore ci si a)
@@ -123,9 +121,9 @@ instance (Validity ci, Validity si, Validity a, Show ci, Show si, Ord ci, Ord si
   validate cs@ClientStore {..} =
     mconcat
       [ genericValidate cs,
-        declare "the store items have distinct ids"
-          $ distinct
-          $ M.keys clientStoreSynced ++ S.toList clientStoreDeleted
+        declare "the store items have distinct ids" $
+          distinct $
+            M.keys clientStoreSynced ++ S.toList clientStoreDeleted
       ]
 
 instance (Ord ci, FromJSON ci, FromJSONKey ci, Ord si, FromJSON si, FromJSONKey si, FromJSON a) => FromJSON (ClientStore ci si a) where
@@ -206,12 +204,11 @@ deleteSyncedFromClientStore i cs =
             }
 
 -- | A synchronisation request for items with Client Id's of type @ci@, Server Id's of type @i@ and values of type @a@
-data SyncRequest ci si a
-  = SyncRequest
-      { syncRequestAdded :: !(Map ci a),
-        syncRequestSynced :: !(Set si),
-        syncRequestDeleted :: !(Set si)
-      }
+data SyncRequest ci si a = SyncRequest
+  { syncRequestAdded :: !(Map ci a),
+    syncRequestSynced :: !(Set si),
+    syncRequestDeleted :: !(Set si)
+  }
   deriving (Show, Eq, Ord, Generic)
 
 instance (NFData ci, NFData si, NFData a) => NFData (SyncRequest ci si a)
@@ -220,9 +217,9 @@ instance (Validity ci, Validity si, Validity a, Ord ci, Ord si, Show ci) => Vali
   validate sr@SyncRequest {..} =
     mconcat
       [ genericValidate sr,
-        declare "the sync request items have distinct ids"
-          $ distinct
-          $ S.toList syncRequestSynced ++ S.toList syncRequestDeleted
+        declare "the sync request items have distinct ids" $
+          distinct $
+            S.toList syncRequestSynced ++ S.toList syncRequestDeleted
       ]
 
 instance (FromJSON ci, FromJSON si, FromJSON a, FromJSONKey ci, Ord ci, Ord si, Ord a) => FromJSON (SyncRequest ci si a) where
@@ -258,13 +255,12 @@ makeSyncRequest ClientStore {..} =
     }
 
 -- | A synchronisation response for items with identifiers of type @i@ and values of type @a@
-data SyncResponse ci si a
-  = SyncResponse
-      { syncResponseClientAdded :: !(Map ci si),
-        syncResponseClientDeleted :: !(Set si),
-        syncResponseServerAdded :: !(Map si a),
-        syncResponseServerDeleted :: !(Set si)
-      }
+data SyncResponse ci si a = SyncResponse
+  { syncResponseClientAdded :: !(Map ci si),
+    syncResponseClientDeleted :: !(Set si),
+    syncResponseServerAdded :: !(Map si a),
+    syncResponseServerDeleted :: !(Set si)
+  }
   deriving (Show, Eq, Ord, Generic)
 
 instance (NFData ci, NFData si, NFData a) => NFData (SyncResponse ci si a)
@@ -273,14 +269,14 @@ instance (Validity ci, Validity si, Validity a, Show ci, Show si, Ord ci, Ord si
   validate sr@SyncResponse {..} =
     mconcat
       [ genericValidate sr,
-        declare "the sync response items have distinct uuids"
-          $ distinct
-          $ concat
-            [ M.elems syncResponseClientAdded,
-              S.toList syncResponseClientDeleted,
-              M.keys syncResponseServerAdded,
-              S.toList syncResponseServerDeleted
-            ]
+        declare "the sync response items have distinct uuids" $
+          distinct $
+            concat
+              [ M.elems syncResponseClientAdded,
+                S.toList syncResponseClientDeleted,
+                M.keys syncResponseServerAdded,
+                S.toList syncResponseServerDeleted
+              ]
       ]
 
 instance (Ord ci, Ord si, FromJSON ci, FromJSON si, FromJSONKey ci, FromJSONKey si, Ord a, FromJSON a) => FromJSON (SyncResponse ci si a) where
@@ -342,13 +338,12 @@ pureClientSyncProcessor =
         cs {clientStoreDeleted = clientStoreDeleted cs `S.difference` cd}
     }
 
-data ClientSyncProcessor ci si a m
-  = ClientSyncProcessor
-      { clientSyncProcessorSyncServerAdded :: Map si a -> m (),
-        clientSyncProcessorSyncClientAdded :: Map ci si -> m (),
-        clientSyncProcessorSyncServerDeleted :: Set si -> m (),
-        clientSyncProcessorSyncClientDeleted :: Set si -> m ()
-      }
+data ClientSyncProcessor ci si a m = ClientSyncProcessor
+  { clientSyncProcessorSyncServerAdded :: Map si a -> m (),
+    clientSyncProcessorSyncClientAdded :: Map ci si -> m (),
+    clientSyncProcessorSyncServerDeleted :: Set si -> m (),
+    clientSyncProcessorSyncClientDeleted :: Set si -> m ()
+  }
   deriving (Generic)
 
 mergeSyncResponseCustom :: Monad m => ClientSyncProcessor ci si a m -> SyncResponse ci si a -> m ()
@@ -360,12 +355,11 @@ mergeSyncResponseCustom ClientSyncProcessor {..} SyncResponse {..} = do
   clientSyncProcessorSyncClientAdded syncResponseClientAdded
 
 -- | A record of the basic operations that are necessary to build a synchronisation processor.
-data ServerSyncProcessor ci si a m
-  = ServerSyncProcessor
-      { serverSyncProcessorRead :: m (Map si a),
-        serverSyncProcessorAddItems :: Map ci a -> m (Map ci si),
-        serverSyncProcessorDeleteItems :: Set si -> m (Set si)
-      }
+data ServerSyncProcessor ci si a m = ServerSyncProcessor
+  { serverSyncProcessorRead :: m (Map si a),
+    serverSyncProcessorAddItems :: Map ci a -> m (Map ci si),
+    serverSyncProcessorDeleteItems :: Set si -> m (Set si)
+  }
   deriving (Generic)
 
 processServerSyncCustom ::
@@ -383,10 +377,9 @@ processServerSyncCustom ServerSyncProcessor {..} SyncRequest {..} = do
   pure SyncResponse {..}
 
 -- | A central store of items with identifiers of type @i@ and values of type @a@
-newtype ServerStore si a
-  = ServerStore
-      { serverStoreItems :: Map si a
-      }
+newtype ServerStore si a = ServerStore
+  { serverStoreItems :: Map si a
+  }
   deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
 instance (NFData si, NFData a) => NFData (ServerStore si a)

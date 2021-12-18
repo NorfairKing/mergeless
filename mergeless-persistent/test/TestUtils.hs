@@ -25,12 +25,14 @@ import TestUtils.ServerDB
 
 withServerPool :: (ConnectionPool -> IO a) -> IO a
 withServerPool func =
-  runNoLoggingT $ withSqlitePool ":memory:" 1 $ \serverPool -> do
-    flip runSqlPool serverPool $ void $ runMigrationSilent migrateServer
-    liftIO $ func serverPool
+  runNoLoggingT $
+    withSqlitePool ":memory:" 1 $ \serverPool -> do
+      flip runSqlPool serverPool $ void $ runMigrationSilent migrateServer
+      liftIO $ func serverPool
 
 withClientPool :: (ConnectionPool -> IO a) -> IO a
 withClientPool func =
-  runNoLoggingT $ withSqlitePool ":memory:" 1 $ \clientPool -> do
-    flip runSqlPool clientPool $ void $ runMigrationSilent migrateClient
-    liftIO $ func clientPool
+  runNoLoggingT $
+    withSqlitePool ":memory:" 1 $ \clientPool -> do
+      flip runSqlPool clientPool $ void $ runMigrationSilent migrateClient
+      liftIO $ func clientPool

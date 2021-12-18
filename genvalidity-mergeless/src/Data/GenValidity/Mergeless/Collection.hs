@@ -68,7 +68,7 @@ splitSet s =
       pure $ S.split a s
 
 mapWithIds :: (Ord i, GenValid a) => Set i -> Gen (Map i a)
-mapWithIds = traverse id . M.fromSet (const genValid)
+mapWithIds = sequenceA . M.fromSet (const genValid)
 
 instance (GenValid si, GenValid a, Show si, Show a, Ord si, Ord a) => GenValid (ServerStore si a) where
   genValid = genValidStructurallyWithoutExtraChecking

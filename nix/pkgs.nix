@@ -9,5 +9,4 @@ import sources.nixpkgs {
     (final: previous: { inherit (import sources.gitignore { inherit (final) lib; }) gitignoreSource; })
     (import ./overlay.nix)
   ];
-  config.allowUnfree = true;
 }

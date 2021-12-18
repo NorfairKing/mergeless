@@ -1,11 +1,11 @@
-resolver: lts-16.12
+resolver: lts-18.16
 packages:
   - mergeless
   - genvalidity-mergeless
   - mergeless-persistent
 extra-deps:
 - github: NorfairKing/validity
-  commit: 35bc8d45b27e6c21429e4b681b16e46ccd541b3b
+  commit: 466bb2f140e62cae0d4fe3770681c3d74e99cf40
   subdirs:
   - genvalidity
   - genvalidity-aeson

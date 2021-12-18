@@ -24,15 +24,15 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
-        "branch": "nixos-20.09",
+        "branch": "nixos-21.11",
         "description": "Nix Packages collection",
         "homepage": "",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "1c1f5649bb9c1b0d98637c8c365228f57126f361",
-        "sha256": "0f2nvdijyxfgl5kwyb4465pppd5vkhqxddx6v40k2s0z9jfhj0xl",
+        "rev": "2627c4b795107ba94562626925f5a9a2bc62ebc6",
+        "sha256": "0pbfmpk7k6vyqyjfxc7jwnik1q8hlb67kmr1gaqnkqcr9xbswdkf",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/1c1f5649bb9c1b0d98637c8c365228f57126f361.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/2627c4b795107ba94562626925f5a9a2bc62ebc6.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "pre-commit-hooks": {
@@ -41,10 +41,10 @@
         "homepage": "",
         "owner": "hercules-ci",
         "repo": "nix-pre-commit-hooks",
-        "rev": "50cfce93606c020b9e69dce24f039b39c34a4c2d",
-        "sha256": "0q0irn855y3gr3aqvbbv4dygq8bs1pqjfqc8k8kmc9g0c990r6i9",
+        "rev": "ff9c0b459ddc4b79c06e19d44251daa8e9cd1746",
+        "sha256": "0z09ndxvbk6w4j28lzgj0b9qqcbwrvr58c0xsm0rf0xsdipi0nwf",
         "type": "tarball",
-        "url": "https://github.com/hercules-ci/nix-pre-commit-hooks/archive/50cfce93606c020b9e69dce24f039b39c34a4c2d.tar.gz",
+        "url": "https://github.com/hercules-ci/nix-pre-commit-hooks/archive/ff9c0b459ddc4b79c06e19d44251daa8e9cd1746.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "validity": {
@@ -53,10 +53,10 @@
         "homepage": "https://www.youtube.com/watch?v=eIs9qNh17SM",
         "owner": "NorfairKing",
         "repo": "validity",
-        "rev": "35bc8d45b27e6c21429e4b681b16e46ccd541b3b",
-        "sha256": "1a0y9xbs4ypj8mynm6p4idvb7h4mnsasa1f4jcs57qbsihmhx5jz",
+        "rev": "466bb2f140e62cae0d4fe3770681c3d74e99cf40",
+        "sha256": "02il38blg3frihmsb0gi0qfjf6k3zb5wglbxk9c6nq9p7zh4hiz3",
         "type": "tarball",
-        "url": "https://github.com/NorfairKing/validity/archive/35bc8d45b27e6c21429e4b681b16e46ccd541b3b.tar.gz",
+        "url": "https://github.com/NorfairKing/validity/archive/466bb2f140e62cae0d4fe3770681c3d74e99cf40.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     }
 }
