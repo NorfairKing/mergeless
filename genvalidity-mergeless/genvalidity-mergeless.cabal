@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4b6341c3336455bb2bc44a9830d17efc0c100af6f394586da7a1297a1b9df83f
+-- hash: 83663d671cbb9209d8c6a9783f3695579434e58a154f0b5ff9763d624909278e
 
 name:           genvalidity-mergeless
 version:        0.3.0.0
@@ -13,7 +13,7 @@ homepage:       https://github.com/NorfairKing/mergeless#readme
 bug-reports:    https://github.com/NorfairKing/mergeless/issues
 author:         Tom Sydney Kerckhove
 maintainer:     syd.kerckhove@gmail.com
-copyright:      Copyright: (c) 2018-2021 Tom Sydney Kerckhove
+copyright:      Copyright: (c) 2018-2022 Tom Sydney Kerckhove
 license:        MIT
 build-type:     Simple
 extra-source-files:

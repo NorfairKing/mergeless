@@ -339,10 +339,10 @@ pureClientSyncProcessor =
     }
 
 data ClientSyncProcessor ci si a m = ClientSyncProcessor
-  { clientSyncProcessorSyncServerAdded :: Map si a -> m (),
-    clientSyncProcessorSyncClientAdded :: Map ci si -> m (),
-    clientSyncProcessorSyncServerDeleted :: Set si -> m (),
-    clientSyncProcessorSyncClientDeleted :: Set si -> m ()
+  { clientSyncProcessorSyncServerAdded :: !(Map si a -> m ()),
+    clientSyncProcessorSyncClientAdded :: !(Map ci si -> m ()),
+    clientSyncProcessorSyncServerDeleted :: !(Set si -> m ()),
+    clientSyncProcessorSyncClientDeleted :: !(Set si -> m ())
   }
   deriving (Generic)
 
@@ -356,9 +356,9 @@ mergeSyncResponseCustom ClientSyncProcessor {..} SyncResponse {..} = do
 
 -- | A record of the basic operations that are necessary to build a synchronisation processor.
 data ServerSyncProcessor ci si a m = ServerSyncProcessor
-  { serverSyncProcessorRead :: m (Map si a),
-    serverSyncProcessorAddItems :: Map ci a -> m (Map ci si),
-    serverSyncProcessorDeleteItems :: Set si -> m (Set si)
+  { serverSyncProcessorRead :: !(m (Map si a)),
+    serverSyncProcessorAddItems :: !(Map ci a -> m (Map ci si)),
+    serverSyncProcessorDeleteItems :: !(Set si -> m (Set si))
   }
   deriving (Generic)
 

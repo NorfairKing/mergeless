@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.34.5.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f34495620a66b0afde3562023ecc1fe4f5626f5d2c2b5f37ab0302b21d1033eb
+-- hash: 91fa80d5022b27ec2803b9bb8c72fa6bce7e17ac0210f43b2515d02fd9c683d8
 
 name:           mergeless-persistent
 version:        0.1.0.0
@@ -13,7 +13,7 @@ homepage:       https://github.com/NorfairKing/mergeless#readme
 bug-reports:    https://github.com/NorfairKing/mergeless/issues
 author:         Tom Sydney Kerckhove
 maintainer:     syd.kerckhove@gmail.com
-copyright:      Copyright: (c) 2018-2020 Tom Sydney Kerckhove
+copyright:      Copyright: (c) 2018-2022 Tom Sydney Kerckhove
 license:        MIT
 build-type:     Simple
 extra-source-files:

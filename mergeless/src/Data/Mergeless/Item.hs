@@ -31,7 +31,7 @@ instance ToJSON a => ToJSON (ClientItem a)
 -- | A synchronisation request for items with identifiers of type @i@ and values of type @a@
 data ItemSyncRequest a
   = ItemSyncRequestPoll
-  | ItemSyncRequestNew a
+  | ItemSyncRequestNew !a
   | ItemSyncRequestKnown
   | ItemSyncRequestDeleted
   deriving (Show, Eq, Ord, Generic)

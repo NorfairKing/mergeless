@@ -151,8 +151,8 @@ clientMergeSyncResponse :: SResp -> T ()
 clientMergeSyncResponse = runClientDB . clientMergeSyncResponseThingQuery
 
 data TestEnv = TestEnv
-  { testEnvClientPool :: ConnectionPool,
-    testEnvServerPool :: ConnectionPool
+  { testEnvClientPool :: !ConnectionPool,
+    testEnvServerPool :: !ConnectionPool
   }
 
 oneClientSpec :: SpecWith TestEnv -> Spec

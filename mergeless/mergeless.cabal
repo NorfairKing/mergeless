@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 5dff1d10e51ea7be22749d5beb4feaa3e8ed629bd69b8d4e6bde95100b96a5c7
+-- hash: 6dd97e78d6cbe412738f33c71dbe10d22f01afb3c2513d0455d40b9242030d60
 
 name:           mergeless
 version:        0.3.0.0
@@ -13,7 +13,7 @@ homepage:       https://github.com/NorfairKing/mergeless#readme
 bug-reports:    https://github.com/NorfairKing/mergeless/issues
 author:         Tom Sydney Kerckhove
 maintainer:     syd.kerckhove@gmail.com
-copyright:      Copyright: (c) 2018-2020 Tom Sydney Kerckhove
+copyright:      Copyright: (c) 2018-2022 Tom Sydney Kerckhove
 license:        MIT
 build-type:     Simple
 extra-source-files:

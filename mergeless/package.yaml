@@ -4,7 +4,7 @@ github:              "NorfairKing/mergeless"
 license:             MIT
 author:              "Tom Sydney Kerckhove"
 maintainer:          "syd.kerckhove@gmail.com"
-copyright:           "Copyright: (c) 2018-2020 Tom Sydney Kerckhove"
+copyright:           "Copyright: (c) 2018-2022 Tom Sydney Kerckhove"
 
 extra-source-files:
 - ChangeLog.md

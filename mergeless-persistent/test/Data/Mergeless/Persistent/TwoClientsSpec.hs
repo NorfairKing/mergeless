@@ -345,9 +345,9 @@ data Client = A | B
   deriving (Show, Eq)
 
 data TestEnv = TestEnv
-  { testEnvServerPool :: ConnectionPool,
-    testEnvClient1Pool :: ConnectionPool,
-    testEnvClient2Pool :: ConnectionPool
+  { testEnvServerPool :: !ConnectionPool,
+    testEnvClient1Pool :: !ConnectionPool,
+    testEnvClient2Pool :: !ConnectionPool
   }
 
 twoClientsSpec :: SpecWith TestEnv -> Spec
