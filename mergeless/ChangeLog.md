@@ -2,6 +2,10 @@
 
 ## [0.4.0.0] - 2022-06-19
 
+### Added
+
+* Autodocodec support
+
 ### Changed
 
 * Made the json encoding of item sync types more sparse and forward-compatible.

@@ -1,13 +1,13 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.6.
+-- This file has been generated from package.yaml by hpack version 0.34.7.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3e88ed8eb8e3775a9b2ed4dd821607e6907c960a01c36f174747c7322952d226
+-- hash: e31706648c86473e95cc860e1d3c9ca33a3e44055ecdd5c0136f1d68a0ab191f
 
 name:           mergeless
-version:        0.3.0.0
+version:        0.4.0.0
 description:    Please see the README on GitHub at <https://github.com/NorfairKing/mergeless#readme>
 homepage:       https://github.com/NorfairKing/mergeless#readme
 bug-reports:    https://github.com/NorfairKing/mergeless/issues
