@@ -1,12 +1,15 @@
-{ sources ? import ./sources.nix
+{ sources ? ./sources.nix
+, nixpkgs ? sources.nixpkgs
+, system ? builtins.currentSystem
 }:
-let
-  pkgsv = import sources.nixpkgs;
-in
-import sources.nixpkgs {
-  overlays = [
-    (import (sources.validity + "/nix/overlay.nix"))
-    (final: previous: { inherit (import sources.gitignore { inherit (final) lib; }) gitignoreSource; })
-    (import ./overlay.nix)
-  ];
+import nixpkgs {
+  overlays =
+    [
+      (final: previous: { inherit (import sources.gitignore { inherit (final) lib; }) gitignoreSource; })
+      (import (sources.autodocodec + "/nix/overlay.nix"))
+      (import (sources.sydtest + "/nix/overlay.nix"))
+      (import (sources.safe-coloured-text + "/nix/overlay.nix"))
+      (import (sources.validity + "/nix/overlay.nix"))
+      (import ./overlay.nix)
+    ];
 }

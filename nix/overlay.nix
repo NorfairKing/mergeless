@@ -1,4 +1,5 @@
 final: previous:
+with final.lib;
 with final.haskell.lib;
 let
   mergelessPkg = name:
@@ -15,12 +16,18 @@ in
       genvalidity-mergeless = mergelessPkg "genvalidity-mergeless";
       mergeless-persistent = mergelessPkg "mergeless-persistent";
     };
+  mergelessRelease =
+    final.symlinkJoin {
+      name = "appendful-release";
+      paths = attrValues final.mergelessPackages;
+    };
+
   haskellPackages =
     previous.haskellPackages.override (
       old:
       {
         overrides =
-          final.lib.composeExtensions (old.overrides or (_: _: { })) (
+          composeExtensions (old.overrides or (_: _: { })) (
             self: super: final.mergelessPackages
           );
       }

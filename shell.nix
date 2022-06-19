@@ -6,7 +6,7 @@ in
 pkgs.haskell.lib.buildStackProject {
   name = "mergeless-shell";
   buildInputs = with pkgs; [
-    (import sources.niv { inherit pkgs; }).niv
+    (import sources.niv { }).niv
     haskellPackages.autoexporter
     zlib
   ] ++ pre-commit.tools;
