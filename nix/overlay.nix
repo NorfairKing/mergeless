@@ -16,9 +16,10 @@ in
       genvalidity-mergeless = mergelessPkg "genvalidity-mergeless";
       mergeless-persistent = mergelessPkg "mergeless-persistent";
     };
+
   mergelessRelease =
     final.symlinkJoin {
-      name = "appendful-release";
+      name = "mergeless-release";
       paths = attrValues final.mergelessPackages;
     };
 
