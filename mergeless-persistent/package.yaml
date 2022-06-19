@@ -28,6 +28,7 @@ tests:
   mergeless-persistent-test:
     main: Spec.hs
     source-dirs: test
+    build-tools: sydtest-discover
     ghc-options:
       - -threaded
       - -rtsopts
@@ -36,10 +37,10 @@ tests:
       - QuickCheck
       - containers
       - genvalidity >= 1.0
-      - genvalidity-hspec
+      - genvalidity-sydtest
       - genvalidity-mergeless
       - genvalidity-persistent
-      - hspec
+      - sydtest
       - mergeless
       - mergeless-persistent
       - monad-logger

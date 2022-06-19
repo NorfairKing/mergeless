@@ -15,10 +15,9 @@ import qualified Data.Map as M
 import Data.Mergeless
 import Data.Mergeless.Persistent
 import Database.Persist.Sql
-import Test.Hspec
-import Test.Hspec.QuickCheck
 import Test.QuickCheck
-import Test.Validity
+import Test.Syd hiding (runTest)
+import Test.Syd.Validity
 import TestUtils
 
 {-# ANN module ("HLint: ignore Reduce duplication" :: String) #-}
@@ -156,7 +155,9 @@ data TestEnv = TestEnv
   }
 
 oneClientSpec :: SpecWith TestEnv -> Spec
-oneClientSpec = around withTestEnv
+oneClientSpec =
+  modifyMaxSuccess (`div` 10)
+    . around withTestEnv
 
 withTestEnv :: (TestEnv -> IO a) -> IO a
 withTestEnv func =

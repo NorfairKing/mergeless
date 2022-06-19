@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 6dd97e78d6cbe412738f33c71dbe10d22f01afb3c2513d0455d40b9242030d60
+-- hash: 4591ab67c74147519eba138b3cbb29df949de60f1d20c30e68ee32f82bbbe0f3
 
 name:           mergeless
 version:        0.3.0.0
@@ -35,6 +35,7 @@ library
   ghc-options: -Wall -fwarn-redundant-constraints
   build-depends:
       aeson
+    , autodocodec
     , base >=4.11 && <5
     , containers
     , deepseq

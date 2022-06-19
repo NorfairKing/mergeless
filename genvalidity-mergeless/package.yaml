@@ -25,8 +25,9 @@ library:
 
 tests:
   mergeless-test:
-    main:                Spec.hs
-    source-dirs:         test
+    main: Spec.hs
+    source-dirs: test
+    build-tools: sydtest-discover
     ghc-options:
     - -threaded
     - -rtsopts
@@ -35,11 +36,11 @@ tests:
       - base >= 4.7 && < 5
       - QuickCheck
       - containers
-      - genvalidity-hspec
-      - genvalidity-hspec-aeson
+      - genvalidity-sydtest
+      - genvalidity-sydtest-aeson
       - genvalidity-mergeless
       - genvalidity-uuid
-      - hspec
+      - sydtest
       - mergeless
       - mtl
       - pretty-show

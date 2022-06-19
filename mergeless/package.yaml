@@ -1,10 +1,10 @@
-name:                mergeless
-version:             0.3.0.0
-github:              "NorfairKing/mergeless"
-license:             MIT
-author:              "Tom Sydney Kerckhove"
-maintainer:          "syd.kerckhove@gmail.com"
-copyright:           "Copyright: (c) 2018-2022 Tom Sydney Kerckhove"
+name: mergeless
+version: 0.3.0.0
+github: "NorfairKing/mergeless"
+license: MIT
+author: "Tom Sydney Kerckhove"
+maintainer: "syd.kerckhove@gmail.com"
+copyright: "Copyright: (c) 2018-2022 Tom Sydney Kerckhove"
 
 extra-source-files:
 - ChangeLog.md
@@ -18,11 +18,11 @@ library:
   - -Wall
   - -fwarn-redundant-constraints
   dependencies:
-    - aeson
-    - base >= 4.11 && < 5
-    - containers
-    - deepseq
-    - mtl
-    - validity
-    - validity-containers
-
+  - aeson
+  - autodocodec
+  - base >= 4.11 && < 5
+  - containers
+  - deepseq
+  - mtl
+  - validity
+  - validity-containers

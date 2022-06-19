@@ -8,9 +8,9 @@ where
 import Data.GenValidity.Mergeless.Item ()
 import Data.GenValidity.UUID ()
 import Data.Mergeless.Item
-import Test.Hspec
-import Test.Validity
-import Test.Validity.Aeson
+import Test.Syd
+import Test.Syd.Validity
+import Test.Syd.Validity.Aeson
 
 {-# ANN module ("HLint: ignore Reduce duplication" :: String) #-}
 
