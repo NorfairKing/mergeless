@@ -27,12 +27,12 @@ withServerPool :: (ConnectionPool -> IO a) -> IO a
 withServerPool func =
   runNoLoggingT $
     withSqlitePool ":memory:" 1 $ \serverPool -> do
-      flip runSqlPool serverPool $ void $ runMigrationSilent migrateServer
+      flip runSqlPool serverPool $ void $ runMigrationQuiet migrateServer
       liftIO $ func serverPool
 
 withClientPool :: (ConnectionPool -> IO a) -> IO a
 withClientPool func =
   runNoLoggingT $
     withSqlitePool ":memory:" 1 $ \clientPool -> do
-      flip runSqlPool clientPool $ void $ runMigrationSilent migrateClient
+      flip runSqlPool clientPool $ void $ runMigrationQuiet migrateClient
       liftIO $ func clientPool
