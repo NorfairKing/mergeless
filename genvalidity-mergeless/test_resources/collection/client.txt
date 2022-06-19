@@ -1,0 +1,15 @@
+# ClientStore
+[37madded[m: # [34moptional[m
+  # default: [35m{}[m
+  # added items
+  [37m<key>[m: 
+    [33m<number>[m # between [32m0[m and [32m255[m
+[37msynced[m: # [34moptional[m
+  # default: [35m{}[m
+  # synced items
+  [37m<key>[m: 
+    [33m<number>[m # between [32m0[m and [32m255[m
+[37mdeleted[m: # [34moptional[m
+  # default: [35m[][m
+  # deleted items
+  - [33m<number>[m # between [32m0[m and [32m255[m

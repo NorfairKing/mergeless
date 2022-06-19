@@ -1,0 +1,19 @@
+# SyncResponse
+[37mclient-added[m: # [34moptional[m
+  # default: [35m{}[m
+  # items added by the client
+  [37m<key>[m: 
+    [33m<number>[m # between [32m0[m and [32m255[m
+[37mclient-deleted[m: # [34moptional[m
+  # default: [35m[][m
+  # items deleted by the client
+  - [33m<number>[m # between [32m0[m and [32m255[m
+[37mserver-added[m: # [34moptional[m
+  # default: [35m{}[m
+  # items added by the server
+  [37m<key>[m: 
+    [33m<number>[m # between [32m0[m and [32m255[m
+[37mserver-deleted[m: # [34moptional[m
+  # default: [35m[][m
+  # items deleted by the server
+  - [33m<number>[m # between [32m0[m and [32m255[m

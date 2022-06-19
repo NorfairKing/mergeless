@@ -8,6 +8,7 @@ copyright: "Copyright: (c) 2018-2022 Tom Sydney Kerckhove"
 
 extra-source-files:
 - ChangeLog.md
+- test_resources/**/*
 
 description:         Please see the README on GitHub at <https://github.com/NorfairKing/mergeless#readme>
 

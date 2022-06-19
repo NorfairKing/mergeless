@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.7.
+-- This file has been generated from package.yaml by hpack version 0.34.6.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 697b086759a0baa6a8be3b1b0324fc6c406eceddc6820c526b1c8dbf292eefdd
+-- hash: f9facd1119c9b22e5d4f47b4e4ee045029a5e6ae008781dc0e72b2ee99549725
 
 name:           genvalidity-mergeless
 version:        0.4.0.0
@@ -18,6 +18,14 @@ license:        MIT
 build-type:     Simple
 extra-source-files:
     ChangeLog.md
+    test_resources/collection/client.txt
+    test_resources/collection/request.txt
+    test_resources/collection/response.txt
+    test_resources/collection/server.txt
+    test_resources/item/client.txt
+    test_resources/item/request.txt
+    test_resources/item/response.txt
+    test_resources/item/server.txt
 
 source-repository head
   type: git
