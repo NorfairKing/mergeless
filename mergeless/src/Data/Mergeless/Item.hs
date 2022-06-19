@@ -1,12 +1,16 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Data.Mergeless.Item where
 
+import Autodocodec
 import Control.DeepSeq
-import Data.Aeson
+import Data.Aeson (FromJSON, ToJSON)
+import Data.Text (Text)
 import Data.Validity
 import Data.Validity.Containers ()
 import GHC.Generics (Generic)
@@ -18,15 +22,42 @@ data ClientItem a
   | ClientAdded !a
   | ClientSynced !a
   | ClientDeleted
-  deriving (Show, Eq, Ord, Generic)
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving (FromJSON, ToJSON) via (Autodocodec (ClientItem a))
 
 instance Validity a => Validity (ClientItem a)
 
 instance NFData a => NFData (ClientItem a)
 
-instance FromJSON a => FromJSON (ClientItem a)
+instance HasCodec a => HasCodec (ClientItem a) where
+  codec =
+    object "ClientItem" $
+      dimapCodec f g $
+        disjointEitherCodec
+          ( disjointEitherCodec
+              (typeField "empty" <*> pure ())
+              (typeField "added" <*> requiredField "value" "item that was added, client-side")
+          )
+          ( disjointEitherCodec
+              (typeField "synced" <*> requiredField "value" "the item that is known, client-side")
+              (typeField "deleted" <*> pure ())
+          )
+    where
+      f :: Either (Either () a) (Either a ()) -> ClientItem a
+      f = \case
+        Left (Left ()) -> ClientEmpty
+        Left (Right v) -> ClientAdded v
+        Right (Left v) -> ClientSynced v
+        Right (Right ()) -> ClientDeleted
+      g :: ClientItem a -> Either (Either () a) (Either a ())
+      g = \case
+        ClientEmpty -> Left (Left ())
+        ClientAdded v -> Left (Right v)
+        ClientSynced v -> Right (Left v)
+        ClientDeleted -> Right (Right ())
 
-instance ToJSON a => ToJSON (ClientItem a)
+      typeField :: Text -> ObjectCodec b (x -> x)
+      typeField typeName = id <$ requiredFieldWith' "type" (literalTextCodec typeName) .= const typeName
 
 -- | A synchronisation request for items with identifiers of type @i@ and values of type @a@
 data ItemSyncRequest a
@@ -34,15 +65,41 @@ data ItemSyncRequest a
   | ItemSyncRequestNew !a
   | ItemSyncRequestKnown
   | ItemSyncRequestDeleted
-  deriving (Show, Eq, Ord, Generic)
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving (FromJSON, ToJSON) via (Autodocodec (ItemSyncRequest a))
 
 instance Validity a => Validity (ItemSyncRequest a)
 
 instance NFData a => NFData (ItemSyncRequest a)
 
-instance FromJSON a => FromJSON (ItemSyncRequest a)
+instance HasCodec a => HasCodec (ItemSyncRequest a) where
+  codec =
+    object "ItemSyncRequest" $
+      dimapCodec f g $
+        disjointEitherCodec
+          ( disjointEitherCodec
+              (typeField "empty" <*> pure ())
+              (typeField "added" <*> requiredField "value" "item that was added, client-side")
+          )
+          ( disjointEitherCodec
+              (typeField "synced" <*> pure ())
+              (typeField "deleted" <*> pure ())
+          )
+    where
+      f = \case
+        Left (Left ()) -> ItemSyncRequestPoll
+        Left (Right v) -> ItemSyncRequestNew v
+        Right (Left ()) -> ItemSyncRequestKnown
+        Right (Right ()) -> ItemSyncRequestDeleted
 
-instance ToJSON a => ToJSON (ItemSyncRequest a)
+      g = \case
+        ItemSyncRequestPoll -> Left (Left ())
+        ItemSyncRequestNew v -> Left (Right v)
+        ItemSyncRequestKnown -> Right (Left ())
+        ItemSyncRequestDeleted -> Right (Right ())
+
+      typeField :: Text -> ObjectCodec b (x -> x)
+      typeField typeName = id <$ requiredFieldWith' "type" (literalTextCodec typeName) .= const typeName
 
 makeItemSyncRequest :: ClientItem a -> ItemSyncRequest a
 makeItemSyncRequest ci =
@@ -60,15 +117,51 @@ data ItemSyncResponse a
   | ItemSyncResponseClientDeleted
   | ItemSyncResponseServerAdded !a
   | ItemSyncResponseServerDeleted
-  deriving (Show, Eq, Ord, Generic)
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving (FromJSON, ToJSON) via (Autodocodec (ItemSyncResponse a))
 
 instance Validity a => Validity (ItemSyncResponse a)
 
 instance NFData a => NFData (ItemSyncResponse a)
 
-instance FromJSON a => FromJSON (ItemSyncResponse a)
+instance HasCodec a => HasCodec (ItemSyncResponse a) where
+  codec =
+    object "ItemSyncResponse" $
+      dimapCodec f g $
+        disjointEitherCodec
+          ( disjointEitherCodec
+              (typeField "in-sync-empty" <*> pure ())
+              (typeField "in-sync-full" <*> pure ())
+          )
+          ( disjointEitherCodec
+              ( disjointEitherCodec
+                  (typeField "client-added" <*> pure ())
+                  (typeField "client-deleted" <*> pure ())
+              )
+              ( disjointEitherCodec
+                  (typeField "server-added" <*> requiredField "value" "the value that was added, server-side")
+                  (typeField "server-deleted" <*> pure ())
+              )
+          )
+    where
+      f = \case
+        Left (Left ()) -> ItemSyncResponseInSyncEmpty
+        Left (Right ()) -> ItemSyncResponseInSyncFull
+        Right (Left (Left ())) -> ItemSyncResponseClientAdded
+        Right (Left (Right ())) -> ItemSyncResponseClientDeleted
+        Right (Right (Left v)) -> ItemSyncResponseServerAdded v
+        Right (Right (Right ())) -> ItemSyncResponseServerDeleted
 
-instance ToJSON a => ToJSON (ItemSyncResponse a)
+      g = \case
+        ItemSyncResponseInSyncEmpty -> Left (Left ())
+        ItemSyncResponseInSyncFull -> Left (Right ())
+        ItemSyncResponseClientAdded -> Right (Left (Left ()))
+        ItemSyncResponseClientDeleted -> Right (Left (Right ()))
+        ItemSyncResponseServerAdded v -> Right (Right (Left v))
+        ItemSyncResponseServerDeleted -> Right (Right (Right ()))
+
+      typeField :: Text -> ObjectCodec b (x -> x)
+      typeField typeName = id <$ requiredFieldWith' "type" (literalTextCodec typeName) .= const typeName
 
 -- | Merge a synchronisation response back into a client-side store.
 mergeItemSyncResponse :: ClientItem a -> ItemSyncResponse a -> ClientItem a
@@ -102,15 +195,27 @@ mergeItemSyncResponse ci sr =
 data ServerItem a
   = ServerItemEmpty
   | ServerItemFull !a
-  deriving (Show, Eq, Ord, Generic)
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving (FromJSON, ToJSON) via (Autodocodec (ServerItem a))
 
 instance Validity a => Validity (ServerItem a)
 
 instance NFData a => NFData (ServerItem a)
 
-instance FromJSON a => FromJSON (ServerItem a)
-
-instance ToJSON a => ToJSON (ServerItem a)
+instance HasCodec a => HasCodec (ServerItem a) where
+  codec =
+    object "ServerItem" $
+      dimapCodec f g $
+        possiblyJointEitherCodec
+          (requiredField "value" "the item on the server side")
+          (pure ())
+    where
+      f = \case
+        Left v -> ServerItemFull v
+        Right () -> ServerItemEmpty
+      g = \case
+        ServerItemFull v -> Left v
+        ServerItemEmpty -> Right ()
 
 processServerItemSync :: ServerItem a -> ItemSyncRequest a -> (ItemSyncResponse a, ServerItem a)
 processServerItemSync si sr =

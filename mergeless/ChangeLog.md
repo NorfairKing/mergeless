@@ -1,6 +1,10 @@
 # Changelog for mergeless
 
-## Unreleased changes
+## [0.4.0.0] - 2022-06-19
+
+### Changed
+
+* Made the json encoding of item sync types more sparse and forward-compatible.
 
 ## [0.3.0.0] - 2020-05-21
 

@@ -24,5 +24,6 @@ library:
   - containers
   - deepseq
   - mtl
+  - text
   - validity
   - validity-containers

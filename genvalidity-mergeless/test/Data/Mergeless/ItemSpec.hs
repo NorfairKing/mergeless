@@ -1,3 +1,5 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
 module Data.Mergeless.ItemSpec
@@ -5,29 +7,46 @@ module Data.Mergeless.ItemSpec
   )
 where
 
+import Autodocodec
+import Autodocodec.Yaml
+import Data.Data
 import Data.GenValidity.Mergeless.Item ()
 import Data.GenValidity.UUID ()
 import Data.Mergeless.Item
+import Data.Word
 import Test.Syd
 import Test.Syd.Validity
 import Test.Syd.Validity.Aeson
+import Test.Syd.Validity.Utils
+import Text.Colour
 
 {-# ANN module ("HLint: ignore Reduce duplication" :: String) #-}
 
 spec :: Spec
 spec = do
-  eqSpec @(ClientItem Int)
-  genValidSpec @(ClientItem Int)
-  jsonSpec @(ClientItem Int)
-  eqSpec @(ItemSyncRequest Int)
-  genValidSpec @(ItemSyncRequest Int)
-  jsonSpec @(ItemSyncRequest Int)
-  eqSpec @(ItemSyncResponse Int)
-  genValidSpec @(ItemSyncResponse Int)
-  jsonSpec @(ItemSyncResponse Int)
-  eqSpec @(ServerItem Int)
-  genValidSpec @(ServerItem Int)
-  jsonSpec @(ServerItem Int)
+  let yamlSchemaSpec :: forall a. (Typeable a, GenValid a, HasCodec a) => FilePath -> Spec
+      yamlSchemaSpec filePath = do
+        it ("outputs the same schema as before for " <> nameOf @a) $
+          pureGoldenByteStringFile
+            ("test_resources/item/" <> filePath <> ".txt")
+            (renderChunksBS With24BitColours $ schemaChunksViaCodec @a)
+
+  describe "ClientItem" $ do
+    genValidSpec @(ClientItem Word8)
+    jsonSpec @(ClientItem Word8)
+    yamlSchemaSpec @(ClientItem Word8) "client"
+  describe "ItemSyncRequest" $ do
+    genValidSpec @(ItemSyncRequest Word8)
+    jsonSpec @(ItemSyncRequest Word8)
+    yamlSchemaSpec @(ClientItem Word8) "request"
+  describe "ItemSyncResponse" $ do
+    genValidSpec @(ItemSyncResponse Word8)
+    jsonSpec @(ItemSyncResponse Word8)
+    yamlSchemaSpec @(ClientItem Word8) "response"
+  describe "ServerItem" $ do
+    genValidSpec @(ServerItem Word8)
+    jsonSpec @(ServerItem Word8)
+    yamlSchemaSpec @(ClientItem Word8) "server"
   describe "makeItemSyncrequest" $
     it "produces valid requests" $
       producesValid (makeItemSyncRequest @Int)

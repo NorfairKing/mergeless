@@ -1,0 +1,19 @@
+# ClientItem
+# [32mone of[m
+[ [37mtype[m: # [31mrequired[m
+    empty
+  <object>
+, [37mtype[m: # [31mrequired[m
+    added
+  [37mvalue[m: # [31mrequired[m
+    # item that was added, client-side
+    [33m<number>[m # between [32m0[m and [32m255[m
+, [37mtype[m: # [31mrequired[m
+    synced
+  [37mvalue[m: # [31mrequired[m
+    # the item that is known, client-side
+    [33m<number>[m # between [32m0[m and [32m255[m
+, [37mtype[m: # [31mrequired[m
+    deleted
+  <object>
+]

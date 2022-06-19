@@ -1,10 +1,10 @@
-name:                genvalidity-mergeless
-version:             0.3.0.0
-github:              "NorfairKing/mergeless"
-license:             MIT
-author:              "Tom Sydney Kerckhove"
-maintainer:          "syd.kerckhove@gmail.com"
-copyright:           "Copyright: (c) 2018-2022 Tom Sydney Kerckhove"
+name: genvalidity-mergeless
+version: 0.4.0.0
+github: "NorfairKing/mergeless"
+license: MIT
+author: "Tom Sydney Kerckhove"
+maintainer: "syd.kerckhove@gmail.com"
+copyright: "Copyright: (c) 2018-2022 Tom Sydney Kerckhove"
 
 extra-source-files:
 - ChangeLog.md
@@ -33,16 +33,19 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-      - base >= 4.7 && < 5
       - QuickCheck
+      - autodocodec
+      - autodocodec-yaml
+      - base >= 4.7 && < 5
       - containers
+      - genvalidity-mergeless
       - genvalidity-sydtest
       - genvalidity-sydtest-aeson
-      - genvalidity-mergeless
       - genvalidity-uuid
-      - sydtest
       - mergeless
       - mtl
+      - safe-coloured-text
+      - sydtest
       - pretty-show
       - random
       - time
