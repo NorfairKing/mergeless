@@ -5,26 +5,26 @@ packages:
   - mergeless-persistent
 extra-deps:
   - github: NorfairKing/autodocodec
-    commit: 00649ce4174bc693de36077ffdfc3e0d7151ef08
+    commit: e337d681109cac273f5b9ea2b54b174bce79d312
     subdirs:
     - autodocodec
     - autodocodec-schema
     - autodocodec-yaml
 
   - github: NorfairKing/safe-coloured-text
-    commit: 71c5940a3b84eeb498304d8e584e7638f875d51b
+    commit: 675cb01fce5f46718416d7746de5b856ed90a63f
     subdirs:
     - safe-coloured-text
     - safe-coloured-text-terminfo
 
   - github: NorfairKing/sydtest
-    commit: 263745786c277fab6d82ff6f48b6d745ade7a314
+    commit: ff224861ea409a9ee08576adb0438bbbb948917f
     subdirs:
     - sydtest
     - sydtest-discover
 
   - github: NorfairKing/validity
-    commit: d88be911a7e2a84f6c089e9269aaed8d10a74acd
+    commit: 2e9198bdaaa8c80a5dbe2b7b860b5c26558c6374
     subdirs:
     - validity
     - validity-aeson
