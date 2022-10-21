@@ -4,14 +4,13 @@
     nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-22.05";
     flake-utils.url = "github:numtide/flake-utils";
     pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
-    gitignore.url = "github:hercules-ci/gitignore.nix";
-    validity.url = "github:NorfairKing/validity";
+    validity.url = "github:NorfairKing/validity?ref=flake";
     validity.flake = false;
-    autodocodec.url = "github:NorfairKing/autodocodec";
+    autodocodec.url = "github:NorfairKing/autodocodec?ref=flake";
     autodocodec.flake = false;
-    safe-coloured-text.url = "github:NorfairKing/safe-coloured-text";
+    safe-coloured-text.url = "github:NorfairKing/safe-coloured-text?ref=flake";
     safe-coloured-text.flake = false;
-    sydtest.url = "github:NorfairKing/sydtest";
+    sydtest.url = "github:NorfairKing/sydtest?ref=flake";
     sydtest.flake = false;
     nixpkgs-22_05.url = "github:NixOS/nixpkgs?ref=nixos-22.05";
     nixpkgs-21_11.url = "github:NixOS/nixpkgs?ref=nixos-21.11";
@@ -27,7 +26,6 @@
 
     , flake-utils
     , pre-commit-hooks
-    , gitignore
     , validity
     , safe-coloured-text
     , autodocodec
@@ -44,7 +42,6 @@
             (import (autodocodec + "/nix/overlay.nix"))
             (import (safe-coloured-text + "/nix/overlay.nix"))
             (import (sydtest + "/nix/overlay.nix"))
-            (final: previous: { inherit (import gitignore { inherit (final) lib; }) gitignoreSource; })
           ];
         };
         pkgs = pkgsFor nixpkgs;

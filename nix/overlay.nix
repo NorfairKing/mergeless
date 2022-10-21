@@ -13,7 +13,7 @@ with final.haskell.lib;
                 mergelessPkg = name:
                   doBenchmark (
                     buildStrictly (
-                      final.haskellPackages.callCabal2nixWithOptions name (final.gitignoreSource (../. + "/${name}")) "--no-hpack" { }
+                      self.callPackage (../${name}/default.nix) { }
                     )
                   );
                 mergelessPackages =
