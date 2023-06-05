@@ -62,6 +62,7 @@
           backwardCompatibilityChecks = pkgs.lib.mapAttrs (_: nixpkgs: backwardCompatibilityCheckFor nixpkgs) allNixpkgs;
         in
         backwardCompatibilityChecks // {
+          release = self.packages.${system}.default;
           pre-commit = pre-commit-hooks.lib.${system}.run {
             src = ./.;
             hooks = {
