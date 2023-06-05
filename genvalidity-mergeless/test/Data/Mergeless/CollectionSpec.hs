@@ -311,25 +311,25 @@ serverSyncSpec eval func = do
     describe "Multiple items" $ do
       it
         "makes no change if the sync request reflects the same local state with an empty sync response"
-        $ forAllValid $
-          \sis -> do
-            let cs = ServerStore sis
-            (sr, cs') <-
-              eval $
-                func cs $
-                  SyncRequest
-                    { syncRequestAdded = M.empty,
-                      syncRequestSynced = M.keysSet sis,
-                      syncRequestDeleted = S.empty
-                    }
-            cs' `shouldBe` cs
-            sr
-              `shouldBe` SyncResponse
-                { syncResponseClientAdded = M.empty,
-                  syncResponseClientDeleted = S.empty,
-                  syncResponseServerAdded = M.empty,
-                  syncResponseServerDeleted = S.empty
-                }
+        $ forAllValid
+        $ \sis -> do
+          let cs = ServerStore sis
+          (sr, cs') <-
+            eval $
+              func cs $
+                SyncRequest
+                  { syncRequestAdded = M.empty,
+                    syncRequestSynced = M.keysSet sis,
+                    syncRequestDeleted = S.empty
+                  }
+          cs' `shouldBe` cs
+          sr
+            `shouldBe` SyncResponse
+              { syncResponseClientAdded = M.empty,
+                syncResponseClientDeleted = S.empty,
+                syncResponseServerAdded = M.empty,
+                syncResponseServerDeleted = S.empty
+              }
       it "successfully syncs additions accross to a second client" $
         forAllValid $
           \is ->
