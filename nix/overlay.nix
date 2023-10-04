@@ -1,38 +1,14 @@
 final: prev:
-with final.lib;
-with final.haskell.lib;
+let
+  overrides = (final.callPackage ./overrides.nix { });
+  addOverrides = old: { overrides = final.lib.composeExtensions (old.overrides or (_: _: { })) overrides; };
+in
 {
-  haskellPackages =
-    prev.haskellPackages.override (
-      old:
-      {
-        overrides =
-          composeExtensions (old.overrides or (_: _: { })) (
-            self: super:
-              let
-                mergelessPkg = name:
-                  doBenchmark (
-                    buildStrictly (
-                      self.callPackage (../${name}/default.nix) { }
-                    )
-                  );
-                mergelessPackages =
-                  {
-                    mergeless = mergelessPkg "mergeless";
-                    genvalidity-mergeless = mergelessPkg "genvalidity-mergeless";
-                    mergeless-persistent = mergelessPkg "mergeless-persistent";
-                  };
-              in
-              {
-                inherit mergelessPackages;
-                mergelessRelease =
-                  final.symlinkJoin {
-                    name = "mergeless-release";
-                    paths = attrValues final.haskellPackages.mergelessPackages;
-                  };
-              }
-              // mergelessPackages
-          );
-      }
-    );
+
+  haskell = prev.haskell // {
+    packages = builtins.mapAttrs
+      (compiler: haskellPackages: haskellPackages.override addOverrides)
+      prev.haskell.packages;
+  };
+  haskellPackages = prev.haskellPackages.override addOverrides;
 }
