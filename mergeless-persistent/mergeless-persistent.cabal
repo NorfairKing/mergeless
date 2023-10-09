@@ -4,16 +4,16 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 7109eb8f708f15b7bc46e8c399f36cf5d111866102747d9c4f1d49307f45d936
+-- hash: e752e691c265b4a6ac4adbd3796a90835cea1b1a935d91ae0ea4f9f6535e335e
 
 name:           mergeless-persistent
-version:        0.1.0.0
+version:        0.1.0.1
 synopsis:       Support for using mergeless from persistent-based databases
 homepage:       https://github.com/NorfairKing/mergeless#readme
 bug-reports:    https://github.com/NorfairKing/mergeless/issues
 author:         Tom Sydney Kerckhove
 maintainer:     syd.kerckhove@gmail.com
-copyright:      Copyright: (c) 2018-2022 Tom Sydney Kerckhove
+copyright:      Copyright: (c) 2018-2023 Tom Sydney Kerckhove
 license:        MIT
 build-type:     Simple
 extra-source-files:

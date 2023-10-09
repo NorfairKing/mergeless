@@ -1,7 +1,13 @@
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
+#if !MIN_VERSION_persistent(2,14,0)
+{-# OPTIONS_GHC -Wno-redundant-constraints #-}
+#endif
 
 module Data.Mergeless.Persistent
   ( -- * Client side
@@ -86,6 +92,7 @@ clientMergeSyncResponseQuery ::
   ( PersistEntity clientRecord,
     PersistField sid,
     PersistEntityBackend clientRecord ~ SqlBackend,
+    SafeToInsert clientRecord,
     MonadIO m
   ) =>
   -- | Create an un-deleted synced record on the client side
@@ -102,6 +109,7 @@ clientSyncProcessor ::
   ( PersistEntity clientRecord,
     PersistField sid,
     PersistEntityBackend clientRecord ~ SqlBackend,
+    SafeToInsert clientRecord,
     MonadIO m
   ) =>
   -- | Create an un-deleted synced record on the client side
@@ -126,6 +134,7 @@ clientSyncProcessor func serverIdField deletedField = ClientSyncProcessor {..}
 serverProcessSyncQuery ::
   ( PersistEntity record,
     PersistEntityBackend record ~ SqlBackend,
+    SafeToInsert record,
     MonadIO m
   ) =>
   -- | Filters to select the relevant items
@@ -144,6 +153,7 @@ serverProcessSyncQuery filters funcTo funcFrom = processServerSyncCustom $ serve
 serverSyncProcessor ::
   ( PersistEntity record,
     PersistEntityBackend record ~ SqlBackend,
+    SafeToInsert record,
     MonadIO m
   ) =>
   -- | Filters to select the relevant items
@@ -170,6 +180,7 @@ serverProcessSyncWithCustomIdQuery ::
     PersistEntity record,
     PersistField sid,
     PersistEntityBackend record ~ SqlBackend,
+    SafeToInsert record,
     MonadIO m
   ) =>
   -- | The action to generate new identifiers
@@ -194,6 +205,7 @@ serverSyncProcessorWithCustomId ::
     PersistEntity record,
     PersistField sid,
     PersistEntityBackend record ~ SqlBackend,
+    SafeToInsert record,
     MonadIO m
   ) =>
   -- | The action to generate new identifiers
@@ -228,6 +240,7 @@ serverSyncProcessorWithCustomId genId idField filters funcTo funcFrom =
 setupUnsyncedClientQuery ::
   ( PersistEntity clientRecord,
     PersistEntityBackend clientRecord ~ SqlBackend,
+    SafeToInsert clientRecord,
     MonadIO m
   ) =>
   -- | How to insert a _new_ record
@@ -242,6 +255,7 @@ setupUnsyncedClientQuery func = mapM_ (insert . func)
 setupClientQuery ::
   ( PersistEntity clientRecord,
     PersistEntityBackend clientRecord ~ SqlBackend,
+    SafeToInsert clientRecord,
     MonadIO m
   ) =>
   -- | Create an un-deleted unsynced record on the client side
@@ -330,3 +344,7 @@ setupServerQuery ::
   ServerStore (Key record) a ->
   SqlPersistT m ()
 setupServerQuery func ServerStore {..} = forM_ (M.toList serverStoreItems) $ \(i, e) -> void $ insertKey i $ func e
+
+#if !MIN_VERSION_persistent(2,14,0)
+type SafeToInsert a = a ~ a
+#endif                    

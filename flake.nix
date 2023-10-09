@@ -2,8 +2,11 @@
   description = "mergeless";
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-23.05";
+    nixpkgs-22_11.url = "github:NixOS/nixpkgs?ref=nixos-22.11";
+    nixpkgs-22_05.url = "github:NixOS/nixpkgs?ref=nixos-22.05";
+    nixpkgs-21_11.url = "github:NixOS/nixpkgs?ref=nixos-21.11";
+    horizon-advance.url = "git+https://gitlab.horizon-haskell.net/package-sets/horizon-advance";
     pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
-    horizon-core.url = "git+https://gitlab.horizon-haskell.net/package-sets/horizon-core";
     validity.url = "github:NorfairKing/validity";
     validity.flake = false;
     autodocodec.url = "github:NorfairKing/autodocodec";
@@ -14,9 +17,6 @@
     fast-myers-diff.flake = false;
     sydtest.url = "github:NorfairKing/sydtest";
     sydtest.flake = false;
-    nixpkgs-22_11.url = "github:NixOS/nixpkgs?ref=nixos-22.11";
-    nixpkgs-22_05.url = "github:NixOS/nixpkgs?ref=nixos-22.05";
-    nixpkgs-21_11.url = "github:NixOS/nixpkgs?ref=nixos-21.11";
   };
 
   outputs =
@@ -25,8 +25,8 @@
     , nixpkgs-22_11
     , nixpkgs-22_05
     , nixpkgs-21_11
+    , horizon-advance
     , pre-commit-hooks
-    , horizon-core
     , validity
     , safe-coloured-text
     , autodocodec
@@ -35,40 +35,27 @@
     }:
     let
       system = "x86_64-linux";
-      overlays = [
-        self.overlays.${system}
-        (import (validity + "/nix/overlay.nix"))
-        (import (autodocodec + "/nix/overlay.nix"))
-        (import (safe-coloured-text + "/nix/overlay.nix"))
-        (import (fast-myers-diff + "/nix/overlay.nix"))
-        (import (sydtest + "/nix/overlay.nix"))
+      nixpkgsFor = nixpkgs: import nixpkgs { inherit system; config.allowUnfree = true; };
+      pkgs = nixpkgsFor nixpkgs;
+      allOverrides = pkgs.lib.composeManyExtensions [
+        (pkgs.callPackage (fast-myers-diff + "/nix/overrides.nix") { })
+        (pkgs.callPackage (safe-coloured-text + "/nix/overrides.nix") { })
+        (pkgs.callPackage (sydtest + "/nix/overrides.nix") { })
+        (pkgs.callPackage (validity + "/nix/overrides.nix") { })
+        (pkgs.callPackage (autodocodec + "/nix/overrides.nix") { })
+        self.overrides.${system}
       ];
-      pkgsFor = nixpkgs: import nixpkgs {
-        inherit system;
-        inherit overlays;
-      };
-      horizonPkgs = import nixpkgs {
-        inherit system;
-        overlays = [
-          (final: prev: {
-            haskellPackages = prev.haskellPackages.override (old: {
-              overrides = final.lib.composeExtensions (old.overrides or (_: _: { })) (self: super:
-                horizon-core.legacyPackages.${system} // super
-              );
-            });
-          })
-        ] ++ overlays;
-      };
-      pkgs = pkgsFor nixpkgs;
+      horizonPkgs = horizon-advance.legacyPackages.${system}.extend allOverrides;
+      haskellPackagesFor = nixpkgs: (nixpkgsFor nixpkgs).haskellPackages.extend allOverrides;
+      haskellPackages = haskellPackagesFor nixpkgs;
     in
     {
+      overrides.${system} = pkgs.callPackage ./nix/overrides.nix { };
       overlays.${system} = import ./nix/overlay.nix;
-      packages.${system} = pkgs.haskellPackages.mergelessPackages;
+      packages.${system} = haskellPackages.mergelessPackages;
       checks.${system} =
         let
-          backwardCompatibilityCheckFor = nixpkgs:
-            let pkgs' = pkgsFor nixpkgs;
-            in pkgs'.haskellPackages.mergelessRelease;
+          backwardCompatibilityCheckFor = nixpkgs: (haskellPackagesFor nixpkgs).mergelessRelease;
           allNixpkgs = {
             inherit
               nixpkgs-22_11
@@ -78,8 +65,8 @@
           backwardCompatibilityChecks = pkgs.lib.mapAttrs (_: nixpkgs: backwardCompatibilityCheckFor nixpkgs) allNixpkgs;
         in
         backwardCompatibilityChecks // {
-          forwardCompatibility = horizonPkgs.haskellPackages.mergelessRelease;
-          release = pkgs.haskellPackages.mergelessRelease;
+          forwardCompatibility = horizonPkgs.mergelessRelease;
+          release = haskellPackages.mergelessRelease;
           pre-commit = pre-commit-hooks.lib.${system}.run {
             src = ./.;
             hooks = {
@@ -92,11 +79,9 @@
             };
           };
         };
-      devShells.${system}.default = pkgs.haskellPackages.shellFor {
+      devShells.${system}.default = haskellPackages.shellFor {
         name = "mergeless-shell";
-        packages = (p:
-          (builtins.attrValues p.mergelessPackages)
-        );
+        packages = p: builtins.attrValues p.mergelessPackages;
         withHoogle = true;
         doBenchmark = true;
         buildInputs = (with pkgs; [
