@@ -169,7 +169,7 @@ emptyClientStore =
 storeSize :: ClientStore ci si a -> Int
 storeSize ClientStore {..} = M.size clientStoreAdded + M.size clientStoreSynced
 
-clientStoreIds :: Ord si => ClientStore ci si a -> Set si
+clientStoreIds :: (Ord si) => ClientStore ci si a -> Set si
 clientStoreIds ClientStore {..} = M.keysSet clientStoreSynced `S.union` clientStoreDeleted
 
 -- | Add an item to a client store as an added item.
@@ -206,10 +206,10 @@ findFreeSpot m =
       | ci == maxBound = minBound
       | otherwise = succ ci
 
-deleteUnsyncedFromClientStore :: Ord ci => ci -> ClientStore ci si a -> ClientStore ci si a
+deleteUnsyncedFromClientStore :: (Ord ci) => ci -> ClientStore ci si a -> ClientStore ci si a
 deleteUnsyncedFromClientStore cid cs = cs {clientStoreAdded = M.delete cid $ clientStoreAdded cs}
 
-deleteSyncedFromClientStore :: Ord si => si -> ClientStore ci si a -> ClientStore ci si a
+deleteSyncedFromClientStore :: (Ord si) => si -> ClientStore ci si a -> ClientStore ci si a
 deleteSyncedFromClientStore i cs =
   let syncedBefore = clientStoreSynced cs
    in case M.lookup i syncedBefore of
@@ -378,7 +378,7 @@ data ClientSyncProcessor ci si a m = ClientSyncProcessor
   }
   deriving (Generic)
 
-mergeSyncResponseCustom :: Monad m => ClientSyncProcessor ci si a m -> SyncResponse ci si a -> m ()
+mergeSyncResponseCustom :: (Monad m) => ClientSyncProcessor ci si a m -> SyncResponse ci si a -> m ()
 mergeSyncResponseCustom ClientSyncProcessor {..} SyncResponse {..} = do
   -- The order here matters!
   clientSyncProcessorSyncServerAdded syncResponseServerAdded
@@ -468,11 +468,11 @@ processServerSync genUuid cs sr =
     modC :: (Map si a -> Map si a) -> StateT (ServerStore si a) m ()
     modC func = modify (\(ServerStore m) -> ServerStore $ func m)
 
-diffSet :: Ord si => Map si a -> Set si -> Map si a
+diffSet :: (Ord si) => Map si a -> Set si -> Map si a
 diffSet m s = m `M.difference` toMap s
 
 toMap :: Set si -> Map si ()
 toMap = M.fromSet (const ())
 
-distinct :: Ord a => [a] -> Bool
+distinct :: (Ord a) => [a] -> Bool
 distinct ls = sort ls == S.toAscList (S.fromList ls)

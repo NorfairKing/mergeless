@@ -470,13 +470,13 @@ newtype D m a = D
   }
   deriving (Generic, Functor, Applicative, Monad, MonadState StdGen, MonadTrans, MonadIO)
 
-evalDM :: Functor m => D m a -> m a
+evalDM :: (Functor m) => D m a -> m a
 evalDM d = fst <$> runDM d (mkStdGen 42)
 
 runDM :: D m a -> StdGen -> m (a, StdGen)
 runDM = runStateT . unD
 
-genD :: Monad m => D m UUID
+genD :: (Monad m) => D m UUID
 genD = do
   r <- get
   let (u, r') = random r

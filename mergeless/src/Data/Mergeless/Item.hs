@@ -25,11 +25,11 @@ data ClientItem a
   deriving stock (Show, Eq, Ord, Generic)
   deriving (FromJSON, ToJSON) via (Autodocodec (ClientItem a))
 
-instance Validity a => Validity (ClientItem a)
+instance (Validity a) => Validity (ClientItem a)
 
-instance NFData a => NFData (ClientItem a)
+instance (NFData a) => NFData (ClientItem a)
 
-instance HasCodec a => HasCodec (ClientItem a) where
+instance (HasCodec a) => HasCodec (ClientItem a) where
   codec =
     object "ClientItem" $
       dimapCodec f g $
@@ -68,11 +68,11 @@ data ItemSyncRequest a
   deriving stock (Show, Eq, Ord, Generic)
   deriving (FromJSON, ToJSON) via (Autodocodec (ItemSyncRequest a))
 
-instance Validity a => Validity (ItemSyncRequest a)
+instance (Validity a) => Validity (ItemSyncRequest a)
 
-instance NFData a => NFData (ItemSyncRequest a)
+instance (NFData a) => NFData (ItemSyncRequest a)
 
-instance HasCodec a => HasCodec (ItemSyncRequest a) where
+instance (HasCodec a) => HasCodec (ItemSyncRequest a) where
   codec =
     object "ItemSyncRequest" $
       dimapCodec f g $
@@ -120,11 +120,11 @@ data ItemSyncResponse a
   deriving stock (Show, Eq, Ord, Generic)
   deriving (FromJSON, ToJSON) via (Autodocodec (ItemSyncResponse a))
 
-instance Validity a => Validity (ItemSyncResponse a)
+instance (Validity a) => Validity (ItemSyncResponse a)
 
-instance NFData a => NFData (ItemSyncResponse a)
+instance (NFData a) => NFData (ItemSyncResponse a)
 
-instance HasCodec a => HasCodec (ItemSyncResponse a) where
+instance (HasCodec a) => HasCodec (ItemSyncResponse a) where
   codec =
     object "ItemSyncResponse" $
       dimapCodec f g $
@@ -198,11 +198,11 @@ data ServerItem a
   deriving stock (Show, Eq, Ord, Generic)
   deriving (FromJSON, ToJSON) via (Autodocodec (ServerItem a))
 
-instance Validity a => Validity (ServerItem a)
+instance (Validity a) => Validity (ServerItem a)
 
-instance NFData a => NFData (ServerItem a)
+instance (NFData a) => NFData (ServerItem a)
 
-instance HasCodec a => HasCodec (ServerItem a) where
+instance (HasCodec a) => HasCodec (ServerItem a) where
   codec =
     object "ServerItem" $
       dimapCodec f g $
