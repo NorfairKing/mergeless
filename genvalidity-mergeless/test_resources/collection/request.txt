@@ -3,12 +3,12 @@
   # default: [35m{}[m
   # new items
   [37m<key>[m: 
-    [33m<number>[m # [32m8 bit unsigned integer[m
+    [33m<integer>[m # [32m8 bit unsigned integer[m
 [37msynced[m: # [34moptional[m
   # default: [35m[][m
   # known items
-  - [33m<number>[m # [32m8 bit unsigned integer[m
+  - [33m<integer>[m # [32m8 bit unsigned integer[m
 [37mdeleted[m: # [34moptional[m
   # default: [35m[][m
   # deleted items
-  - [33m<number>[m # [32m8 bit unsigned integer[m
+  - [33m<integer>[m # [32m8 bit unsigned integer[m

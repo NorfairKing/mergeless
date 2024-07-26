@@ -7,12 +7,12 @@
     added
   [37mvalue[m: # [31mrequired[m
     # item that was added, client-side
-    [33m<number>[m # [32m8 bit unsigned integer[m
+    [33m<integer>[m # [32m8 bit unsigned integer[m
 , [37mtype[m: # [31mrequired[m
     synced
   [37mvalue[m: # [31mrequired[m
     # the item that is known, client-side
-    [33m<number>[m # [32m8 bit unsigned integer[m
+    [33m<integer>[m # [32m8 bit unsigned integer[m
 , [37mtype[m: # [31mrequired[m
     deleted
   <object>

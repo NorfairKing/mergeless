@@ -5,15 +5,14 @@
 }:
 with lib;
 with haskell.lib;
-self: super:
+self: _:
 let
   mergelessPkg = name: doBenchmark (buildStrictly (self.callPackage (../${name}) { }));
-  mergelessPackages =
-    {
-      mergeless = mergelessPkg "mergeless";
-      genvalidity-mergeless = mergelessPkg "genvalidity-mergeless";
-      mergeless-persistent = mergelessPkg "mergeless-persistent";
-    };
+  mergelessPackages = {
+    mergeless = mergelessPkg "mergeless";
+    genvalidity-mergeless = mergelessPkg "genvalidity-mergeless";
+    mergeless-persistent = mergelessPkg "mergeless-persistent";
+  };
 in
 {
   inherit mergelessPackages;
