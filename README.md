@@ -1,5 +1,7 @@
 # Mergeless
 
+[![NixCI](https://staging.nix-ci.com/badge/gh:NorfairKing:mergeless)](https://staging.nix-ci.com/gh:NorfairKing:mergeless)
+
 A way to synchronise items without merge conflicts.
 
 ## Related project
